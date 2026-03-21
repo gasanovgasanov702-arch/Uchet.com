@@ -1,0 +1,2028 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<link rel="icon" href="icon.ico">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Система Учета</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+#tablet-mode { scroll-behavior: smooth; }
+:root {
+--primary: #2563eb; --bg: #f8fafc; --card: #ffffff; --text: #1e293b;
+--danger: #ef4444; --success: #22c55e; --edit: #f59e0b; --info: #0ea5e9;
+--purple: #8b5cf6; --dark: #334155; --border: #e2e8f0; --th-bg: #f1f5f9;
+--input-bg: #ffffff; --zoom: 1;
+}
+[data-theme="dark"] {
+--primary: #3b82f6; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9;
+--danger: #f87171; --success: #4ade80; --edit: #fbbf24; --info: #38bdf8;
+--purple: #a78bfa; --dark: #94a3b8; --border: #334155; --th-bg: #0f172a;
+--input-bg: #0f172a;
+}
+body {
+font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+background: var(--bg); color: var(--text); margin: 0; display: flex;
+justify-content: center; align-items: center; min-height: 100vh;
+transition: background 0.3s, color 0.3s; -webkit-tap-highlight-color: transparent;
+font-size: calc(16px * var(--zoom));
+}
+#auth-page {
+background: var(--card); padding: 2rem; border-radius: 12px;
+box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 90%; max-width: 350px; position: relative;
+}
+/* ✅ КНОПКА ПЛАНШЕТА НА ГЛАВНОМ ЭКРАНЕ */
+#login-tablet-btn {
+position: absolute;
+bottom: -60px;
+left: 50%;
+transform: translateX(-50%);
+background: var(--info);
+color: white;
+border: none;
+padding: 12px 30px;
+border-radius: 8px;
+font-size: 16px;
+font-weight: bold;
+cursor: pointer;
+box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
+transition: transform 0.2s;
+}
+#login-tablet-btn:hover { transform: translateX(-50%) scale(1.05); }
+.auth-tabs { display: flex; margin-bottom: 15px; border-bottom: 2px solid var(--border); }
+.auth-tabs div { flex: 1; text-align: center; padding: 10px; cursor: pointer; color: var(--dark); font-weight: bold; }
+.auth-tabs div.active { color: var(--primary); border-bottom: 2px solid var(--primary); margin-bottom: -2px; }
+input, textarea, select { width: 100%; padding: 12px; margin-top: 5px; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box; background: var(--input-bg); color: var(--text); font-size: 16px; }
+button { cursor: pointer; border: none; border-radius: 6px; padding: 12px; font-weight: bold; transition: 0.2s; touch-action: manipulation; }
+.btn-main { width: 100%; background: var(--primary); color: white; margin-top: 10px; }
+.btn-small { padding: 6px 12px; font-size: 13px; }
+.btn-excel { background: #10b981; color: white; display: flex; align-items: center; gap: 5px; }
+.btn-excel-detail { background: #059669; color: white; display: flex; align-items: center; gap: 5px; }
+#dashboard { display: none; width: 95%; max-width: 1400px; background: var(--card); padding: 20px; border-radius: 15px; margin-top: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+.header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); margin-bottom: 20px; padding-bottom: 10px; flex-wrap: wrap; gap: 10px; }
+.header-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.add-btn {
+background: var(--success);
+color: white;
+width: 120px;
+height: 120px;
+border-radius: 50%;
+font-size: 60px;
+margin: 10px auto;
+display: block;
+box-shadow: 0 4px 10px rgba(34, 197, 94, 0.4);
+}
+table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 15px; }
+th, td { text-align: left; padding: 10px; border-bottom: 1px solid var(--border); }
+th { background: var(--th-bg); position: sticky; top: 0; }
+.table-container { max-height: 60vh; overflow-y: auto; overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; }
+.btn-del { background: var(--danger); color: white; padding: 5px 8px; font-size: 11px; }
+.btn-edit { background: var(--edit); color: white; padding: 5px 8px; font-size: 11px; margin-left:6px; }
+.profit-cell { color: var(--success); font-weight: bold; font-size: 15px; }
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 100; }
+.modal-content { background: var(--card); padding: 20px; border-radius: 12px; width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; color: var(--text); }
+.modal-large { width: 98%; max-width: 1400px; }
+.hidden { display: none !important; }
+.payday-banner { background: #fef08a; color: #854d0e; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 15px; }
+.security-warning { background: #fef2f2; color: #991b1b; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 15px; border: 2px solid var(--danger); animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+.notif-card { background: rgba(56, 189, 248, 0.1); border-left: 4px solid var(--info); padding: 15px; margin-bottom: 15px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
+.stats-panel { display: flex; flex-wrap: wrap; gap: 10px; background: var(--bg); padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--border); }
+.stat-box { flex: 1; min-width: 120px; text-align: center; }
+.stat-box span { display: block; font-size: 12px; color: var(--dark); }
+.stat-box strong { font-size: 18px; color: var(--text); }
+.text-success { color: var(--success) !important; }
+.text-info { color: var(--info) !important; }
+.text-danger { color: var(--danger) !important; }
+.filters-row { display: flex; flex-wrap: wrap; gap: 15px; background: var(--bg); padding: 10px; border-radius: 8px; margin-bottom: 15px; align-items: center; border: 1px solid var(--border); }
+.filter-item { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 140px; }
+.filter-item label { font-size: 11px; font-weight: bold; color: var(--dark); }
+.filter-item input, .filter-item select { margin: 0; padding: 8px; font-size: 14px; }
+.clickable-name { color: var(--info); text-decoration: underline; cursor: pointer; background: none; border: none; font-size: 14px; padding: 0; font-weight: bold; width: auto; display: inline; margin: 0; }
+.badge-debt { background: rgba(239, 68, 68, 0.2); color: var(--danger); padding: 3px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px; border: 1px solid var(--danger); }
+.badge-paid { background: rgba(34, 197, 94, 0.2); color: var(--success); padding: 3px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px; border: 1px solid var(--success); }
+.warning-text { color: var(--danger); font-size: 13px; font-weight: bold; margin-bottom: 10px; display: block; text-align: center; background: rgba(239,68,68,0.1); padding: 8px; border-radius: 6px; }
+.tfoot-totals { background: var(--th-bg); font-weight: bold; }
+.access-list-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--bg); border-radius: 6px; margin-bottom: 5px; border: 1px solid var(--border); }
+.percent-row { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg); border-radius: 6px; margin-bottom: 8px; border: 1px solid var(--border); }
+.percent-input { width: 60px !important; padding: 6px !important; margin: 0 5px !important; text-align: center; }
+.percent-label { font-size: 12px; color: var(--dark); margin-right: 5px; }
+/* ✅ РЕЖИМ ПЛАНШЕТА (ЗАКАЗЫ) */
+#tablet-mode {
+display: none; 
+position: fixed; 
+top: 0; 
+left: 0; 
+width: 100vw; 
+height: 100vh;
+background: var(--bg); 
+z-index: 9999; 
+overflow-y: auto; 
+padding: 10px; 
+box-sizing: border-box;
+transform-origin: top center;
+transform: scale(var(--tablet-zoom, 1));
+width: calc(100vw / var(--tablet-zoom, 1));
+height: calc(100vh / var(--tablet-zoom, 1));
+}
+/* ✅ КРЕСТИК ВЫХОДА - ВСЕГДА ВИДЕН (НЕ МАСШТАБИРУЕТСЯ) */
+#tablet-exit-btn {
+position: fixed;
+top: 15px;
+right: 15px;
+width: 50px;
+height: 50px;
+background: var(--danger);
+color: white;
+border-radius: 50%;
+font-size: 24px;
+display: flex;  
+align-items: center;
+justify-content: center;
+box-shadow: 0 4px 15px rgba(239, 68, 68, 0.5);
+z-index: 100000;
+cursor: pointer;
+border: none;
+padding: 0;
+transition: transform 0.2s;
+}
+#tablet-exit-btn:hover {
+transform: scale(1.1);
+}
+#tablet-exit-btn:hover { 
+transform: scale(1.1); 
+}
+#tablet-exit-btn:hover { transform: scale(1.1); }
+#tablet-exit-btn:hover { transform: scale(1.1); }
+.tablet-grid {
+display: grid; 
+grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+gap: 20px; 
+width: 100%; 
+padding-top: 80px; 
+padding-bottom: 100px;
+}
+@media (orientation: landscape) {
+.tablet-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; }
+}
+.tablet-card {
+background: var(--card); border-radius: 12px; padding: 20px;
+box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column;
+align-items: center; text-align: center; transition: transform 0.2s, border-color 0.3s, background-color 0.3s;
+position: relative; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.tablet-card.unpaid { border: 5px solid var(--danger); background: rgba(239, 68, 68, 0.05); }
+.tablet-card.edited { border: 5px solid var(--edit); background: rgba(245, 158, 11, 0.1); }
+.tablet-card.paid { border: 5px solid var(--success); background: rgba(34, 197, 94, 0.1); }
+@keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.tablet-card-number {
+font-size: 36px; font-weight: 900; color: var(--dark); margin-bottom: 8px;
+background: var(--bg); width: 70px; height: 70px; border-radius: 50%;
+display: flex; align-items: center; justify-content: center; border: 3px solid var(--border);
+}
+.tablet-card-user { font-size: 18px; font-weight: bold; color: var(--primary); margin-bottom: 8px; }
+.tablet-card-details {
+font-size: 16px;
+color: var(--text);
+margin: 10px 0;
+line-height: 1.8;
+width: 100%;
+text-align: left;
+background: var(--bg);
+padding: 15px;
+border-radius: 8px;
+font-weight: 500;
+}
+.tablet-card-total {
+font-size: 20px;
+font-weight: 700;
+color: var(--text);
+margin: 5px 0 2px 0;
+text-transform: uppercase;
+letter-spacing: 2px;
+}
+.tablet-card-price {
+font-size: 64px;
+font-weight: 900;
+color: white !important;
+margin: 0 0 10px 0;
+text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+letter-spacing: 5px;
+}
+.tablet-card.unpaid .tablet-card-price { color: white !important; }
+.tablet-card.edited .tablet-card-price { color: white !important; }
+.tablet-card.paid .tablet-card-price { color: white !important; }
+.tablet-toggle-btn { display: none !important; }
+.tablet-card-status { font-size: 12px; font-weight: bold; text-transform: uppercase; padding: 4px 10px; border-radius: 10px; margin-bottom: 10px; }
+.status-unpaid { background: var(--danger); color: white; }
+.status-edited { background: var(--edit); color: white; }
+.status-paid { background: var(--success); color: white; }
+/* ✅ ИНТЕРФЕЙС ПЛАНШЕТА (МЕНЮ С КНОПКАМИ) */
+#tablet-interface {
+display: none;
+position: fixed;
+top: 0;
+left: 0;
+width: 100vw;
+height: 100vh;
+background: var(--bg);
+z-index: 10000;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+gap: 20px;
+}
+.tablet-interface-btn {
+width: 250px;
+height: 80px;
+border-radius: 12px;
+font-size: 18px;
+font-weight: bold;
+border: none;
+cursor: pointer;
+transition: transform 0.2s;
+}
+.tablet-interface-btn:hover { transform: scale(1.05); }
+#btn-tablet-fullscreen { background: var(--info); color: white; }
+#btn-tablet-orders { background: var(--success); color: white; }
+#btn-tablet-theme { background: var(--dark); color: white; }
+#btn-tablet-exit { background: var(--danger); color: white; }
+/* ✅ КОНТРОЛЫ ЗУМА ДЛЯ ПЛАНШЕТА */
+#tablet-interface-zoom {
+display: flex;
+align-items: center;
+gap: 15px;
+background: var(--card);
+padding: 15px 25px;
+border-radius: 50px;
+box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+margin-top: 20px;
+}
+.tablet-zoom-btn {
+width: 50px;
+height: 50px;
+border-radius: 50%;
+font-size: 24px;
+font-weight: bold;
+border: none;
+cursor: pointer;
+background: var(--primary);
+color: white;
+transition: transform 0.2s;
+}
+.tablet-zoom-btn:hover { transform: scale(1.1); }
+#tablet-zoom-display {
+font-size: 20px;
+font-weight: bold;
+min-width: 80px;
+text-align: center;
+color: var(--text);
+}
+.zoom-controls { display: flex; align-items: center; gap: 5px; background: var(--bg); padding: 5px; border-radius: 6px; border: 1px solid var(--border); }
+.zoom-btn { width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; background: var(--dark); color: white; }
+.sound-option { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 8px; background: var(--bg); border-radius: 6px; }
+.sound-option label { font-weight: bold; font-size: 14px; }
+.employee-select-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg); border-radius: 6px; margin-bottom: 5px; border: 1px solid var(--border); }
+.employee-select-item input { width: auto; margin: 0; }
+.password-view-row { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg); border-radius: 6px; margin-bottom: 5px; border: 1px solid var(--border); }
+.password-view-row.admin { background: rgba(139, 92, 246, 0.1); border-color: var(--purple); }
+</style>
+</head>
+<body>
+<!-- ✅ ИНТЕРФЕЙС ПЛАНШЕТА (МЕНЮ С КНОПКАМИ + ЗУМ) -->
+<div id="tablet-interface">
+<button id="btn-tablet-fullscreen" class="tablet-interface-btn" onclick="toggleTabletFullscreen()">📺 На весь экран</button>
+<button id="btn-tablet-orders" class="tablet-interface-btn" onclick="showTabletOrders()">📋 Показать заказы</button>
+<button id="btn-tablet-theme" class="tablet-interface-btn" onclick="toggleTabletTheme()">🌓 Тема</button>
+<button id="btn-tablet-exit" class="tablet-interface-btn" onclick="exitTabletInterface()">🚪 Выйти</button>
+<!-- ✅ КОНТРОЛЫ ЗУМА (50% - 250%) -->
+<div id="tablet-interface-zoom">
+<button class="tablet-zoom-btn" onclick="adjustTabletZoom(-0.25)">-</button>
+<span id="tablet-zoom-display">100%</span>
+<button class="tablet-zoom-btn" onclick="adjustTabletZoom(0.25)">+</button>
+</div>
+</div>
+<!-- ✅ РЕЖИМ ПЛАНШЕТА (ЗАКАЗЫ - БЕЗ КНОПОК) -->
+<!-- ✅ КРЕСТИК ВЫХОДА (ОТДЕЛЬНО ОТ МАСШТАБИРОВАНИЯ) -->
+<button id="tablet-exit-btn" onclick="exitTabletMode()" style="display:none;">✕</button>
+
+<div id="tablet-mode">
+<div id="tablet-grid" class="tablet-grid"></div>
+</div>
+<div id="auth-page">
+<div class="auth-tabs">
+<div id="tab-login" class="active" onclick="switchAuth('login')">Вход</div>
+<div id="tab-register" onclick="switchAuth('register')">Регистрация</div>
+</div>
+<div id="form-login">
+<input type="text" id="login-user" placeholder="Логин">
+<input type="password" id="login-pass" placeholder="Пароль">
+<button class="btn-main" onclick="handleLogin()">Войти</button>
+</div>
+<div id="form-register" class="hidden">
+<input type="text" id="reg-user" placeholder="Придумайте Логин">
+<input type="password" id="reg-pass" placeholder="Придумайте Пароль">
+<button class="btn-main" style="background: var(--success);" onclick="handleRegister()">Зарегистрироваться</button>
+</div>
+<!-- ✅ КНОПКА ПЛАНШЕТА НА ГЛАВНОМ ЭКРАНЕ -->
+<button id="login-tablet-btn" onclick="openTabletInterface()">📺 Планшет</button>
+</div>
+<div id="dashboard">
+<div id="security-warning-banner" class="security-warning hidden"></div>
+<div id="payday-banner" class="payday-banner hidden"></div>
+<div id="user-notifications"></div>
+<div class="header">
+<h3 id="welcome-msg" style="margin: 0;">Панель</h3>
+<div class="header-btns">
+<div class="zoom-controls">
+<button class="zoom-btn" onclick="adjustZoom(-0.1)">-</button>
+<span style="font-size:12px; font-weight:bold;" id="zoom-display">100%</span>
+<button class="zoom-btn" onclick="adjustZoom(0.1)">+</button>
+</div>
+<button id="btn-tablet-mode" onclick="enterTabletMode()" style="background:var(--info); color:white;" class="hidden">📺 Планшет</button>
+<button id="btn-delete-header" onclick="secureAction('delete')" style="background:var(--danger); color:white;" class="btn-small">🗑️</button>
+<button id="btn-notifs" onclick="openNotifications()" style="background:var(--info); color:white; position:relative;" class="btn-small">
+🔔 <span id="notif-badge" style="position:absolute; top:-5px; right:-5px; background:var(--danger); color:white; border-radius:50%; padding:2px 5px; font-size:10px; display:none;">0</span>
+</button>
+<button onclick="toggleTheme()" style="background: var(--dark); color: white;" class="btn-small">🌓</button>
+<button id="btn-access" onclick="secureAction('access')" style="background: var(--edit); color: white;" class="hidden btn-small">🔓</button>
+<button id="btn-journal" onclick="openAdminJournal()" style="background: var(--primary); color: white;" class="hidden btn-small">📓</button>
+<button id="btn-percentages" onclick="openPercentagesModal()" style="background: var(--purple); color: white;" class="hidden btn-small">💰 Проценты</button>
+<button id="btn-view-passwords" onclick="openPasswordViewer()" style="background: var(--dark); color: white;" class="hidden btn-small">👁️ Пароли</button>
+<button id="btn-settings" onclick="openSettings()" style="background: #cbd5e1; color: #333;" class="btn-small">⚙️</button>
+<button onclick="location.reload()" style="background: #e2e8f0; color: #333;" class="btn-small">Выход</button>
+</div>
+</div>
+<!-- ✅ ПЕРИОД ДЛЯ ПРОСМОТРА (ТОЛЬКО СЕФО) -->
+<div id="admin-period-filter" class="filters-row hidden">
+<div class="filter-item">
+<label>С месяца:</label>
+<input type="month" id="admin-period-start" onchange="renderData()">
+</div>
+<div class="filter-item">
+<label>По месяц:</label>
+<input type="month" id="admin-period-end" onchange="renderData()">
+</div>
+</div>
+<div class="filters-row">
+<div class="filter-item">
+<label>Месяц:</label>
+<input type="month" id="month-selector" onchange="renderData()">
+</div>
+</div>
+<div id="user-ui" class="hidden">
+<span id="access-warning" class="warning-text hidden">⚠️ Доступ к этому месяцу закрыт Сефо. Показаны работы только за последние 24 часа.</span>
+<div class="stats-panel">
+<div class="stat-box"><span>Заработано</span><strong id="u-stat-earned" class="text-info">0</strong></div>
+<div class="stat-box"><span>Авансы</span><strong id="u-stat-advances" class="text-danger">0</strong></div>
+<div class="stat-box"><span>К выдаче</span><strong id="u-stat-balance" class="text-success">0</strong></div>
+</div>
+<div style="display: flex; gap: 10px; margin-bottom: 15px;">
+<button onclick="openRequestAdvance()" style="background:var(--purple); color:white; flex: 1;">💸 Запросить аванс</button>
+</div>
+<div style="text-align: center;">
+<button class="add-btn" onclick="openEntryModal()">+</button>
+<p style="margin-top: 5px; font-weight: bold;">Добавить работу</p>
+</div>
+<h4 style="margin-bottom:5px; margin-top:20px;">Ваши записи:</h4>
+<div class="table-container">
+<table>
+<thead><tr><th>Дата</th><th>Итог</th><th>ЗП</th><th>Действия</th></tr></thead>
+<tbody id="user-data-body"></tbody>
+</table>
+</div>
+</div>
+<div id="admin-ui" class="hidden">
+<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; align-items: center;">
+<button onclick="openAdminAdvances()" style="background:var(--purple); color:white; flex:1;" class="btn-small">💰 Авансы</button>
+<div class="filter-item" style="margin-left: auto; min-width: 150px;">
+<label>Сотрудник:</label>
+<select id="main-emp-filter" onchange="renderData()">
+<option value="all">Все сотрудники</option>
+</select>
+</div>
+</div>
+<h4 style="margin-bottom:5px;">Все записи за период:</h4>
+<p style="margin-top:0; margin-bottom:10px; font-size:11px; color:var(--dark);">Н — Набор, Р — Распечатка, Ф — Фото.</p>
+<div class="table-container">
+<table>
+<thead><tr><th>Сотр.</th><th>Дата</th><th>Н</th><th>Р</th><th>Ф</th><th>Общее</th><th>ЗП</th><th>Прибыль</th></tr></thead>
+<tbody id="admin-data-body"></tbody>
+<tfoot class="tfoot-totals">
+<tr>
+<td colspan="5" style="text-align: right;">ИТОГО:</td>
+<td id="main-total-revenue">0</td>
+<td id="main-total-salary" class="text-info">0</td>
+<td id="main-total-profit">0</td>
+</tr>
+</tfoot>
+</table>
+</div>
+</div>
+</div>
+<!-- ✅ МОДАЛКА ВВОДА ПАРОЛЯ (БЕЗОПАСНОСТЬ) -->
+<div id="modal-security" class="modal">
+<div class="modal-content" style="max-width: 350px;">
+<h3 style="margin-top:0; text-align:center;">🔒 Безопасность</h3>
+<p style="text-align:center; font-size:14px; color:var(--dark);">Введите пароль администратора</p>
+<input type="password" id="security-pass-input" placeholder="Пароль" style="text-align:center; font-size:18px;">
+<div style="display:flex; gap:10px; margin-top:15px;">
+<button class="btn-main" style="background:var(--success);" onclick="confirmSecurityAction()">OK</button>
+<button class="btn-main" style="background:var(--danger);" onclick="closeModal('modal-security')">Отмена</button>
+</div>
+</div>
+</div>
+<!-- Модалки -->
+<div id="modal-admin-advances" class="modal">
+<div class="modal-content">
+<h3 style="margin-top:0;">Управление авансами</h3>
+<div id="pending-advances-list"></div>
+<hr style="margin:12px 0; border:1px solid var(--border);">
+<h4 style="margin:6px 0 8px 0;">Выдать аванс напрямую</h4>
+<label>Сотрудник:</label><select id="admin-adv-emp"></select>
+<label>Сумма</label><input type="number" id="admin-adv-amount" placeholder="Сумма">
+<div style="display:flex; gap:10px; margin-top:8px;">
+<button class="btn-main" style="background:var(--success); flex:1;" onclick="giveAdvanceDirectly()">Выдать</button>
+<button class="btn-main" style="background:var(--dark);" onclick="closeModal('modal-admin-advances')">Закрыть</button>
+</div>
+</div>
+</div>
+<!-- ✅ МОДАЛКА ДОСТУПОВ -->
+<div id="modal-access" class="modal">
+<div class="modal-content" style="max-width: 600px;">
+<h3 style="margin-top:0;">🔓 Доступы</h3>
+<div style="margin-bottom: 20px;">
+<h4 style="margin: 0 0 10px 0; font-size: 14px; color: var(--dark);">📋 Текущие доступы:</h4>
+<div id="current-access-list" style="max-height: 200px; overflow-y: auto;"></div>
+</div>
+<hr style="margin: 15px 0; border: 1px solid var(--border);">
+<h4 style="margin: 0 0 10px 0; font-size: 14px;">➕ Выдать доступ</h4>
+<label>Сотрудник:</label><select id="access-emp-select"></select>
+<div style="display: flex; gap: 10px; margin-top: 10px; align-items: center;">
+<label style="margin: 0; font-weight: bold;">Тип:</label>
+<select id="access-type" onchange="toggleAccessFields()" style="flex: 1;">
+<option value="single">Один месяц</option>
+<option value="period">Период (несколько)</option>
+</select>
+</div>
+<div id="access-single-field" style="margin-top: 10px;">
+<label>Месяц:</label><input type="month" id="access-month">
+</div>
+<div id="access-period-field" class="hidden" style="margin-top: 10px;">
+<label>С месяца:</label><input type="month" id="access-period-start">
+<label>По месяц:</label><input type="month" id="access-period-end">
+</div>
+<div style="display: flex; gap: 10px; margin-top: 15px;">
+<button class="btn-main" style="background:var(--success); margin: 0; flex: 1;" onclick="grantAccess()">Выдать</button>
+</div>
+<button class="btn-main" style="background:var(--dark); margin-top:15px;" onclick="closeModal('modal-access')">Закрыть</button>
+</div>
+</div>
+<!-- ✅ НОВАЯ МОДАЛКА ПРОЦЕНТОВ ЗП (ИНДИВИДУАЛЬНЫЕ) -->
+<div id="modal-percentages" class="modal">
+<div class="modal-content" style="max-width: 800px;">
+<h3 style="margin-top:0;">💰 Проценты ЗП сотрудников</h3>
+<p style="font-size:13px; color:var(--dark); margin-bottom:15px;">Установите индивидуальные проценты для каждого типа работы.</p>
+<div id="percentages-list" style="max-height: 500px; overflow-y: auto;"></div>
+<button class="btn-main" style="background:var(--success); margin-top:15px;" onclick="saveAllPercentages()">💾 Сохранить все</button>
+<button class="btn-main" style="background:var(--dark); margin-top:10px;" onclick="closeModal('modal-percentages')">Закрыть</button>
+</div>
+</div>
+<!-- ✅ МОДАЛКА ПРОСМОТРА ВСЕХ ПАРОЛЕЙ (СЕФО) -->
+<div id="modal-passwords" class="modal">
+<div class="modal-content" style="max-width: 700px;">
+<h3 style="margin-top:0; color: var(--purple);">👁️ Все пароли системы</h3>
+<p style="font-size:13px; color:var(--dark); margin-bottom:15px;">Все аккаунты в реальном времени (включая Сефо).</p>
+<div id="passwords-list" style="max-height: 500px; overflow-y: auto;"></div>
+<button class="btn-main" style="background:var(--dark); margin-top:15px;" onclick="closeModal('modal-passwords')">Закрыть</button>
+</div>
+</div>
+<!-- ✅ ОБНОВЛЕННАЯ МОДАЛКА УДАЛЕНИЯ С ВЫБОРОМ СОТРУДНИКОВ -->
+<div id="modal-delete" class="modal">
+<div class="modal-content" style="max-width:700px;">
+<h3 style="margin-top:0; color:var(--danger);">ОПАСНАЯ ЗОНА</h3>
+<p style="font-size:13px; color:var(--dark);">Доступно только Сефо.</p>
+<div style="margin-top:10px; border:1px solid var(--border); padding:10px; border-radius:6px;">
+<p style="font-size:13px; margin:6px 0;">🗑️ Удалить выборочно сотрудников:</p>
+<div id="employee-select-list" style="max-height:150px; overflow-y:auto; margin-bottom:10px;"></div>
+<button class="btn-small" style="background:var(--danger); color:white;" onclick="deleteSelectedEmployees()">🗑️ Удалить выбранных</button>
+</div>
+<hr style="margin:12px 0; border:1px dashed var(--border);">
+<div style="margin-top:6px;">
+<p style="font-size:13px; color:var(--dark);">Удалить ВСЕХ сотрудников (с бэкапом):</p>
+<button class="btn-small" style="background:#7f1d1d; color:white;" onclick="deleteAllEmployeesWithBackup()">👥 Удалить всех</button>
+</div>
+<hr style="margin:12px 0; border:1px dashed var(--border);">
+<div style="margin-top:6px;">
+<p style="font-size:13px; color:var(--dark);">Удалить данные за период (с бэкапом):</p>
+<button class="btn-small" style="background:var(--danger); color:white;" onclick="deletePeriodWithBackup()">📅 Удалить период</button>
+</div>
+<hr style="margin:12px 0; border:1px dashed var(--border);">
+<div style="margin-top:6px;">
+<p style="font-size:13px; color:var(--dark);">Удалить ВСЁ (Требуется 3 подтверждения):</p>
+<button class="btn-small" style="background:#7f1d1d; color:white;" onclick="deleteEverythingWithBackup()">🧨 УДАЛИТЬ ВСЁ</button>
+</div>
+<button class="btn-main" style="background:var(--dark); margin-top:15px;" onclick="closeModal('modal-delete')">Отмена</button>
+</div>
+</div>
+<div id="modal-undo" class="modal">
+<div class="modal-content" style="max-width:400px; text-align:center;">
+<h3 id="undo-title" style="margin-top:0;">Данные удалены</h3>
+<p id="undo-msg" style="font-size:13px; color:var(--dark);">Восстановление доступно в течение 5 минут.</p>
+<div id="undo-timer" style="font-weight:bold; font-size:20px; margin:15px 0; color:var(--danger);"></div>
+<div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+<button id="btn-undo-restore" class="btn-main" style="max-width:150px; background:var(--info);" onclick="restoreBackup()">Восстановить</button>
+<button id="btn-undo-final" class="btn-small" style="background:var(--danger); color:white;" onclick="finalizeBackupNow()">Удалить навсегда</button>
+</div>
+</div>
+</div>
+<!-- ✅ ЖУРНАЛ С ДВУМЯ КНОПКАМИ EXCEL -->
+<div id="modal-journal" class="modal">
+<div class="modal-content modal-large">
+<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 15px;">
+<h2 style="margin:0; font-size:20px;">📓 Журнал</h2>
+<button class="btn-small" style="background:var(--danger); color:white;" onclick="closeModal('modal-journal')">Закрыть</button>
+</div>
+<div class="filters-row">
+<div class="filter-item"><label>С месяца:</label><input type="month" id="journal-month-start" onchange="renderJournal()"></div>
+<div class="filter-item"><label>По месяц:</label><input type="month" id="journal-month-end" onchange="renderJournal()"></div>
+<div class="filter-item"><label>Сотрудник:</label><select id="journal-emp-filter" onchange="renderJournal()"><option value="all">Все</option></select></div>
+<div style="display: flex; gap: 5px; flex-wrap: wrap;">
+<button class="btn-excel" onclick="exportToExcelShort()" style="height:38px;">📊 Excel (Краткий)</button>
+<button class="btn-excel-detail" onclick="exportToExcelDetailed()" style="height:38px;">📄 Excel (Подробный)</button>
+</div>
+</div>
+<div class="table-container" style="max-height: 60vh;">
+<table>
+<thead>
+<tr>
+<th>Сотрудник</th>
+<th>ЗП (сумма)</th>
+<th>Аванс</th>
+<th>Выдано</th>
+<th>Долг</th>
+<th>Прибыль (Сефо)</th>
+<th>Прибыль (Всего)</th>
+<th>Действие</th>
+</tr>
+</thead>
+<tbody id="journal-body"></tbody>
+<tfoot class="tfoot-totals">
+<tr>
+<td style="text-align:right;">ИТОГО:</td>
+<td></td>
+<td id="journal-total-salary" style="color:var(--info)">0</td>
+<td id="journal-total-advance" style="color:var(--purple)">0</td>
+<td id="journal-total-paid" style="color:var(--success)">0</td>
+<td id="journal-total-debt" style="color:var(--danger)">0</td>
+<td id="journal-total-profit-sefo" style="color:var(--success)">0</td>
+<td id="journal-total-profit-all" style="color:var(--primary)">0</td>
+<td></td>
+</tr>
+</tfoot>
+</table>
+</div>
+</div>
+</div>
+<div id="modal-emp-details" class="modal" style="z-index: 105;">
+<div class="modal-content" style="max-width: 800px;">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+<h3 style="margin:0;" id="detail-emp-name">Карточка</h3>
+<button class="btn-small" style="background:var(--danger); color:white;" onclick="closeModal('modal-emp-details')">Закрыть</button>
+</div>
+<div class="stats-panel" style="gap: 5px;">
+<div class="stat-box"><span>Выручка</span><strong id="det-revenue">0</strong></div>
+<div class="stat-box"><span>Начислено</span><strong id="det-salary" class="text-info">0</strong></div>
+<div class="stat-box"><span>Авансы</span><strong id="det-advances" style="color:var(--purple)">0</strong></div>
+<div class="stat-box"><span>Выдано</span><strong id="det-paid" class="text-success">0</strong></div>
+<div class="stat-box"><span>Долг</span><strong id="det-debt" class="text-danger">0</strong></div>
+</div>
+<div id="settlement-container" style="text-align: center; margin-bottom: 15px;"></div>
+<h4>Работы за период:</h4>
+<div class="table-container" style="max-height: 30vh;">
+<table><thead><tr><th>Дата</th><th>Н</th><th>Р</th><th>Ф</th><th>Итог</th></tr></thead><tbody id="det-works-body"></tbody></table>
+</div>
+</div>
+</div>
+<div id="modal-payment" class="modal" style="z-index: 110;">
+<div class="modal-content" style="max-width: 300px;">
+<h3 style="margin-top:0;" id="pay-title">Выплата</h3>
+<input type="hidden" id="pay-uid"><input type="hidden" id="pay-type">
+<label>Сумма:</label><input type="number" id="pay-amount">
+<button class="btn-main" style="background:var(--success);" onclick="processPayment()">Провести</button>
+<button class="btn-main" style="background:var(--danger);" onclick="closeModal('modal-payment')">Отмена</button>
+</div>
+</div>
+<!-- ✅ ОБНОВЛЕННАЯ МОДАЛКА НАСТРОЕК -->
+<div id="modal-settings" class="modal">
+<div class="modal-content">
+<h3 style="margin-top:0;">Настройки</h3>
+<label>Ваш логин</label><input type="text" id="set-login">
+<label>Ваш пароль</label><input type="text" id="set-pass">
+<button class="btn-main" style="background:var(--success);" onclick="saveSettings()">Сохранить</button>
+<hr style="margin: 20px 0; border: 1px solid var(--border);">
+<h4>🔊 Звуковые сигналы</h4>
+<div id="sound-settings-container"></div>
+<button class="btn-main" style="background:var(--danger); margin-top:20px;" onclick="deleteAccount()">Удалить аккаунт</button>
+<button class="btn-main" style="background:var(--dark); margin-top:15px;" onclick="closeModal('modal-settings')">Закрыть</button>
+</div>
+</div>
+<div id="modal-entry" class="modal">
+<div class="modal-content">
+<h3 id="modal-title" style="margin-top:0;">Запись</h3>
+<label>Набор</label><input type="number" id="inp-nabor" value="0" class="entry-field" oninput="calcSum()">
+<label>Распечатка</label><input type="number" id="inp-print" value="0" class="entry-field" oninput="calcSum()">
+<label>Фото</label><input type="number" id="inp-photo" value="0" class="entry-field" oninput="calcSum()">
+<div style="background: var(--bg); padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid var(--border); text-align:center;">
+<p style="margin:0; font-size:16px;">Итог: <strong id="auto-total" style="font-size:20px;">0</strong></p>
+<p style="margin:5px 0 0 0; font-size: 14px; color: var(--info);">Моя ЗП: <strong id="auto-salary" style="font-size:18px;">0</strong></p>
+</div>
+<button class="btn-main" style="background:var(--success);" onclick="saveEntry()">💾 Сохранить (Enter)</button>
+<button class="btn-main" style="background:var(--danger);" onclick="closeModal('modal-entry')">✖ Выйти (Esc)</button>
+<p style="font-size:12px; color:var(--dark); text-align:center; margin-top:10px;">↑↓ - навигация, Enter - сохранить, Esc - выйти</p>
+</div>
+</div>
+<div id="modal-request-adv" class="modal">
+<div class="modal-content">
+<h3 style="margin-top:0;">Запрос аванса</h3>
+<label>Сумма</label><input type="number" id="req-adv-amount">
+<button class="btn-main" style="background:var(--purple);" onclick="sendAdvanceRequest()">Отправить</button>
+<button class="btn-main" style="background:var(--danger);" onclick="closeModal('modal-request-adv')">Отмена</button>
+</div>
+</div>
+<script>
+// ✅ ФУНКЦИЯ ЭКРАНИРОВАНИЯ ДЛЯ ЗАЩИТЫ ОТ XSS
+function escapeHtml(unsafe) {
+if (unsafe === null || unsafe === undefined) return '';
+return String(unsafe)
+.replace(/&/g, "&amp;")
+.replace(/</g, "&lt;")
+.replace(/>/g, "&gt;")
+.replace(/"/g, "&quot;")
+.replace(/'/g, "&#039;");
+}
+document.addEventListener("click", function () {
+if (window.SoundManager) { SoundManager.unlock(); }
+}, { once: true });
+const firebaseConfig = {
+apiKey: "AIzaSyAbJ813A0jyGWBeCxo1IeplQEYhXquf_p0",
+authDomain: "myaccounting-1f1df.firebaseapp.com",
+projectId: "myaccounting-1f1df",
+storageBucket: "myaccounting-1f1df.firebasestorage.app",
+messagingSenderId: "97843459471",
+appId: "1:97843459471:web:537b7a49c00670cfeec7fa",
+databaseURL: "https://myaccounting-1f1df-default-rtdb.firebaseio.com"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+let currentUser = null;
+let allUsers = {};
+let allEntries = [];
+let allAdvances = [];
+let allPayments = [];
+let allPermissions = {};
+let allPercentages = {};
+let editingEntryId = null;
+let previousEntriesCount = 0;
+let entriesInitialized = false;
+let pendingActionType = '';
+let currentZoom = 1;
+let tabletZoom = 1; // ✅ Зум для планшета
+let lastBackupId = null;
+let undoIntervalHandle = null;
+const today = new Date();
+const currentMonthString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+document.getElementById('month-selector').value = currentMonthString;
+document.getElementById('journal-month-start').value = currentMonthString;
+document.getElementById('journal-month-end').value = currentMonthString;
+document.getElementById('access-month').value = currentMonthString;
+document.getElementById('access-period-start').value = currentMonthString;
+document.getElementById('access-period-end').value = currentMonthString;
+document.getElementById('admin-period-start').value = currentMonthString;
+document.getElementById('admin-period-end').value = currentMonthString;
+// ✅ ФУНКЦИЯ ПОЛУЧЕНИЯ ПРОЦЕНТОВ СОТРУДНИКА
+function getEmployeePercents(uid) {
+const defaultPercents = { nabor: 40, print: 30, photo: 20 };
+if (allPercentages[uid]) {
+return {
+nabor: allPercentages[uid].nabor !== undefined ? allPercentages[uid].nabor : defaultPercents.nabor,
+print: allPercentages[uid].print !== undefined ? allPercentages[uid].print : defaultPercents.print,
+photo: allPercentages[uid].photo !== undefined ? allPercentages[uid].photo : defaultPercents.photo
+};
+}
+return defaultPercents;
+}
+// ✅ РАСЧЁТ ЗП ПО НОВЫМ ПРОЦЕНТАМ
+function calculateSalary(entry, uid) {
+const percents = getEmployeePercents(uid);
+let salary = 0;
+if (entry.nabor > 0) salary += entry.nabor * (percents.nabor / 100);
+if (entry.print > 0) salary += entry.print * (percents.print / 100);
+if (entry.photo > 0) salary += entry.photo * (percents.photo / 100);
+return salary;
+}
+// --- ЗВУКОВОЙ МЕНЕДЖЕР ---
+const SoundManager = {
+sounds: { add: null, edit: null, delete: null, paid: null },
+audioCtx: null,
+unlocked: false,
+init() {
+['add', 'edit', 'delete', 'paid'].forEach(type => {
+const saved = localStorage.getItem('sound_' + type);
+if (saved) { try { this.sounds[type] = new Audio(saved); } catch(e){} }
+});
+try { this.audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
+this.renderSettings();
+const unlockFn = () => {
+this.unlock().then(() => {}).catch(e => {});
+document.body.removeEventListener('click', unlockFn);
+document.body.removeEventListener('touchstart', unlockFn);
+};
+document.body.addEventListener('click', unlockFn, { once: true });
+document.body.addEventListener('touchstart', unlockFn, { once: true });
+},
+async unlock() {
+if (this.unlocked || !this.audioCtx) return;
+try {
+if (this.audioCtx.state === 'suspended') await this.audioCtx.resume();
+if (this.audioCtx.state === 'running') {
+const oscillator = this.audioCtx.createOscillator();
+const gain = this.audioCtx.createGain();
+gain.gain.value = 0.01;
+oscillator.connect(gain); gain.connect(this.audioCtx.destination);
+oscillator.start(); oscillator.stop(this.audioCtx.currentTime + 0.01);
+this.unlocked = true;
+}
+} catch(e){}
+},
+playTone(freqs, duration) {
+if (!this.audioCtx || this.audioCtx.state !== 'running') return;
+try {
+const now = this.audioCtx.currentTime;
+freqs.forEach((f, i) => {
+const osc = this.audioCtx.createOscillator();
+const gain = this.audioCtx.createGain();
+osc.type = 'sine'; osc.frequency.value = f;
+gain.gain.setValueAtTime(0.3, now + i * duration);
+gain.gain.exponentialRampToValueAtTime(0.01, now + i * duration + duration);
+osc.connect(gain); gain.connect(this.audioCtx.destination);
+osc.start(now + i * duration); osc.stop(now + i * duration + duration);
+});
+} catch(e){}
+},
+play(type) {
+if (this.sounds[type]) {
+try {
+this.sounds[type].currentTime = 0;
+const p = this.sounds[type].play();
+if (p && p.catch) p.catch(() => this.playTone(this.getDefaultFreqs(type), 0.1));
+return;
+} catch(e){}
+}
+this.playTone(this.getDefaultFreqs(type), 0.1);
+},
+getDefaultFreqs(type) {
+const freqs = { add: [600, 800], edit: [400, 400, 600], delete: [300, 200], paid: [800, 1000, 1200] };
+return freqs[type] || [400];
+},
+renderSettings() {
+const container = document.getElementById('sound-settings-container');
+if(!container) return;
+const labels = { add: 'Добавление', edit: 'Изменение', delete: 'Удаление', paid: 'Оплата' };
+let html = '';
+for (const [key, label] of Object.entries(labels)) {
+html += `<div class="sound-option"><label>${escapeHtml(label)}</label><button class="btn-small" style="background:var(--dark); color:white;" onclick="SoundManager.play('${key}')">🔊 Тест</button></div>`;
+}
+container.innerHTML = html;
+}
+};
+function adjustZoom(delta) {
+currentZoom += delta;
+if (currentZoom < 0.5) currentZoom = 0.5;
+if (currentZoom > 2.0) currentZoom = 2.0;
+document.documentElement.style.setProperty('--zoom', currentZoom);
+document.getElementById('zoom-display').innerText = Math.round(currentZoom * 100) + '%';
+}
+// ✅ ЗУМ ДЛЯ ПЛАНШЕТА (50% - 250%)
+function adjustTabletZoom(delta) {
+tabletZoom += delta;
+if (tabletZoom < 0.5) tabletZoom = 0.5;
+if (tabletZoom > 2.5) tabletZoom = 2.5;
+// ✅ ОБНОВЛЯЕМ CSS ПЕРЕМЕННУЮ
+document.documentElement.style.setProperty('--tablet-zoom', tabletZoom);
+document.getElementById('tablet-zoom-display').innerText = Math.round(tabletZoom * 100) + '%';
+}
+function toggleTheme() {
+const html = document.documentElement;
+if(html.getAttribute('data-theme') === 'dark') html.removeAttribute('data-theme');
+else html.setAttribute('data-theme', 'dark');
+}
+function switchAuth(tab) {
+document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+document.getElementById('form-login').classList.toggle('hidden', tab !== 'login');
+document.getElementById('form-register').classList.toggle('hidden', tab !== 'register');
+}
+// ✅ ФУНКЦИЯ ВХОДА
+async function handleLogin() {
+const u = document.getElementById('login-user').value.trim();
+const p = document.getElementById('login-pass').value.trim();
+if(!u || !p) return;
+// ✅ Проверка Сефо из базы
+try {
+const sefoSnap = await db.ref('admin/sefo').once('value');
+const sefoData = sefoSnap.val();
+if (sefoData) {
+if (u === sefoData.username && p === sefoData.password) {
+currentUser = {
+id: "admin_sefo",
+username: sefoData.username,
+role: "admin",
+password: sefoData.password
+};
+showDashboard();
+return;
+}
+}
+// Фоллбэк на 9090 если в базе нет
+if (u === "Сефо" && p === "9090") {
+currentUser = {
+id: "admin_sefo",
+username: "Сефо",
+role: "admin",
+password: "9090"
+};
+showDashboard();
+return;
+}
+} catch(e) {}
+// ✅ Проверка обычных пользователей
+try {
+const snapshot = await db.ref('users').once('value');
+const usersData = snapshot.val();
+let found = false;
+if (usersData) {
+for (let id in usersData) {
+if (usersData[id].username === u && usersData[id].password === p) {
+currentUser = { id: id, ...usersData[id] };
+found = true;
+await db.ref('users/' + id).update({ lastLogin: Date.now() });
+break;
+}
+}
+}
+if (found) showDashboard();
+else alert("Неверный логин или пароль");
+} catch (e) { alert("Ошибка сети: " + e.message); }
+}
+async function handleRegister() {
+const u = document.getElementById('reg-user').value.trim();
+const p = document.getElementById('reg-pass').value.trim();
+if(!u || !p) return;
+try {
+await db.ref('users').push({ username: u, password: p, role: "user", lastLogin: Date.now() });
+alert("Успешно зарегистрировано! Теперь войдите.");
+switchAuth('login');
+} catch (e) { alert("Ошибка регистрации: " + e.message); }
+}
+function showDashboard() {
+document.getElementById('auth-page').style.display = 'none';
+document.getElementById('dashboard').style.display = 'block';
+document.getElementById('welcome-msg').innerText = "Привет, " + escapeHtml(currentUser.username);
+SoundManager.init();
+checkPayday();
+// ✅ Настройки прав доступа - ТОЛЬКО СЕФО
+const isSefo = currentUser.role === 'admin';
+if (isSefo) {
+document.getElementById('btn-settings').style.display = '';
+document.getElementById('btn-journal').classList.remove('hidden');
+document.getElementById('btn-access').classList.remove('hidden');
+document.getElementById('btn-percentages').classList.remove('hidden');
+document.getElementById('btn-tablet-mode').classList.remove('hidden');
+document.getElementById('btn-view-passwords').classList.remove('hidden');
+}
+// ✅ Показываем фильтр периода только для Сефо
+if (isSefo) {
+document.getElementById('admin-period-filter').classList.remove('hidden');
+}
+db.ref('users').on('value', snap => { allUsers = snap.val() || {}; updateEmpFilter(); });
+db.ref('percentages').on('value', snap => {
+allPercentages = snap.val() || {};
+renderData();
+if(document.getElementById('modal-percentages').style.display === 'flex') renderPercentagesList();
+if(document.getElementById('modal-passwords').style.display === 'flex') renderPasswordsList();
+});
+db.ref('entries').on('value', snap => {
+const d = snap.val();
+const newEntries = d ? Object.keys(d).map(k => ({id: k, ...d[k]})) : [];
+if (!entriesInitialized) {
+previousEntriesCount = newEntries.length;
+entriesInitialized = true;
+} else {
+if (newEntries.length > previousEntriesCount && document.getElementById('tablet-mode').style.display === 'block') {
+const newEntry = newEntries.find(e => !allEntries.some(old => old.id === e.id));
+if (newEntry) { SoundManager.play('add'); }
+}
+previousEntriesCount = newEntries.length;
+}
+allEntries = newEntries;
+renderData();
+if (document.getElementById('tablet-mode').style.display === 'block') renderTabletMode();
+});
+db.ref('advances').on('value', snap => {
+const d = snap.val();
+allAdvances = d ? Object.keys(d).map(k => ({id: k, ...d[k]})) : [];
+renderData();
+if(isSefo) renderPendingAdvances();
+});
+db.ref('payments').on('value', snap => {
+const d = snap.val();
+allPayments = d ? Object.keys(d).map(k => ({id: k, ...d[k]})) : [];
+renderData();
+renderNotifications();
+if(document.getElementById('tablet-mode').style.display === 'block') renderTabletMode();
+});
+db.ref('permissions').on('value', snap => {
+allPermissions = snap.val() || {};
+renderData();
+if(document.getElementById('modal-access').style.display === 'flex') renderCurrentAccessList();
+});
+}
+function checkPayday() {
+if (today.getDate() === 1) {
+const banner = document.getElementById('payday-banner');
+banner.classList.remove('hidden');
+banner.innerText = currentUser.role === 'admin' ? "⚠️ Сегодня день ЗП!" : "🎉 Сегодня день ЗП!";
+}
+}
+function updateEmpFilter() {
+const sels = [document.getElementById('journal-emp-filter'), document.getElementById('main-emp-filter'), document.getElementById('access-emp-select')];
+let optsAll = '<option value="all">Все сотрудники</option>';
+let optsJustEmps = '';
+for(let uid in allUsers) {
+if(allUsers[uid] && allUsers[uid].role !== 'admin') {
+const opt = `<option value="${escapeHtml(uid)}">${escapeHtml(allUsers[uid].username)}</option>`;
+optsAll += opt; optsJustEmps += opt;
+}
+}
+if(sels[0]) sels[0].innerHTML = optsAll;
+if(sels[1]) sels[1].innerHTML = optsAll;
+if(sels[2]) sels[2].innerHTML = optsJustEmps;
+const adminSel = document.getElementById('admin-adv-emp');
+if(adminSel) {
+adminSel.innerHTML = '';
+for(let uid in allUsers) {
+if(allUsers[uid]) {
+const u = allUsers[uid];
+const opt = document.createElement('option'); opt.value = escapeHtml(uid); opt.text = escapeHtml(u.username || uid);
+adminSel.appendChild(opt);
+}
+}
+}
+}
+function renderNotifications() {
+const container = document.getElementById('user-notifications');
+container.innerHTML = '';
+if (currentUser.role === 'user') {
+const unread = allPayments.filter(p => p.userId === currentUser.id && p.read === false);
+unread.forEach(p => {
+const typeText = p.type === 'salary' ? 'Зарплату' : 'Расчет';
+container.innerHTML += `
+<div class="notif-card">
+<div><b>Внимание!</b> Сефо выдал вам ${escapeHtml(typeText)}: <b>${escapeHtml(p.amount)} тг</b>.</div>
+<button class="btn-small" style="background:var(--success); color:white;" onclick="markRead('${escapeHtml(p.id)}')">OK</button>
+</div>`;
+});
+}
+if (currentUser.role === 'admin') {
+const pending = allAdvances.filter(a => a.status === 'pending').length;
+const badge = document.getElementById('notif-badge');
+if (pending > 0) { badge.style.display = 'inline-block'; badge.innerText = pending; }
+else { badge.style.display = 'none'; }
+} else {
+const badge = document.getElementById('notif-badge'); if (badge) badge.style.display = 'none';
+}
+}
+function markRead(pid) { db.ref('payments/' + pid).update({ read: true }); }
+function openNotifications() {
+if (!currentUser) return;
+if (currentUser.role === 'admin') openAdminAdvances();
+else {
+const container = document.getElementById('user-notifications');
+if (container) { container.scrollIntoView({ behavior: 'smooth' }); container.classList.remove('hidden'); }
+}
+}
+// ✅ ОБНОВЛЕННАЯ renderData С ПЕРИОДОМ И НОВЫМИ ПРОЦЕНТАМИ
+function renderData() {
+const startM = document.getElementById('admin-period-start').value;
+const endM = document.getElementById('admin-period-end').value;
+const selectedMonth = document.getElementById('month-selector').value;
+if (currentUser.role === 'admin') {
+document.getElementById('admin-ui').classList.remove('hidden');
+const mainEmp = document.getElementById('main-emp-filter').value;
+let sumTotal = 0; let sumSalary = 0;
+const body = document.getElementById('admin-data-body'); body.innerHTML = '';
+const filteredEntries = allEntries.filter(e => {
+if(!e.isoDate) return false;
+const entryMonth = e.isoDate.slice(0, 7);
+if (startM && endM) {
+if (entryMonth < startM || entryMonth > endM) return false;
+} else {
+if (!entryMonth.startsWith(selectedMonth)) return false;
+}
+if(mainEmp !== 'all' && e.userId !== mainEmp) return false;
+return true;
+});
+if (mainEmp === 'all') {
+let grouped = {};
+filteredEntries.sort((a,b) => b.timestamp - a.timestamp).forEach(item => {
+if(!grouped[item.userId]) grouped[item.userId] = { total: 0, salary: 0, entries: [] };
+const salary = calculateSalary(item, item.userId);
+grouped[item.userId].entries.push(item);
+grouped[item.userId].total += item.total;
+grouped[item.userId].salary += salary;
+sumTotal += item.total; sumSalary += salary;
+});
+for(let uid in grouped) {
+let g = grouped[uid];
+const user = allUsers[uid];
+const uname = user ? escapeHtml(user.username) : "Удален";
+const percents = getEmployeePercents(uid);
+body.innerHTML += `<tr style="background: var(--th-bg); cursor: pointer;" onclick="toggleRows('rows-${escapeHtml(uid)}')">
+<td colspan="5" style="font-size: 14px;"><b>▶ ${uname}</b> (${g.entries.length})</td>
+<td><b>${g.total}</b></td>
+<td style="color:var(--info)"><b>${g.salary.toFixed(2)}</b> (Н:${percents.nabor}% Р:${percents.print}% Ф:${percents.photo}%)</td>
+<td class="profit-cell"><b>${(g.total - g.salary).toFixed(2)}</b></td>
+</tr>`;
+g.entries.forEach(item => {
+const salary = calculateSalary(item, item.userId);
+const profitItem = (item.total - salary);
+body.innerHTML += `<tr class="rows-${escapeHtml(uid)} hidden" style="background: var(--bg);">
+<td style="padding-left: 20px;">└</td>
+<td>${escapeHtml(item.date)}</td><td>${item.nabor}</td><td>${item.print}</td><td>${item.photo}</td>
+<td>${item.total}</td><td style="color:var(--info)">${salary.toFixed(2)}</td><td class="profit-cell">${profitItem.toFixed(2)}</td>
+</tr>`;
+});
+}
+} else {
+filteredEntries.sort((a,b) => b.timestamp - a.timestamp).forEach(item => {
+const salary = calculateSalary(item, item.userId);
+const profitItem = item.total - salary;
+sumTotal += item.total; sumSalary += salary;
+const user = allUsers[item.userId];
+const uname = user ? escapeHtml(user.username) : "Удален";
+body.innerHTML += `<tr><td><b>${uname}</b></td><td>${escapeHtml(item.date)}</td><td>${item.nabor}</td><td>${item.print}</td><td>${item.photo}</td><td><b>${item.total}</b></td><td style="color:var(--info)">${salary.toFixed(2)}</td><td class="profit-cell">${profitItem.toFixed(2)}</td></tr>`;
+});
+}
+document.getElementById('main-total-revenue').innerText = sumTotal.toFixed(2);
+document.getElementById('main-total-salary').innerText = sumSalary.toFixed(2);
+document.getElementById('main-total-profit').innerText = (sumTotal - sumSalary).toFixed(2);
+} else {
+document.getElementById('user-ui').classList.remove('hidden');
+const hasAccess = allPermissions[currentUser.id] && allPermissions[currentUser.id][selectedMonth];
+const warningMsg = document.getElementById('access-warning');
+const twentyFourHours = 24 * 60 * 60 * 1000;
+const now = Date.now();
+let earned = 0; let advancesThisMonth = 0;
+const body = document.getElementById('user-data-body'); body.innerHTML = '';
+const myEntries = allEntries.filter(e => {
+if (e.userId !== currentUser.id) return false;
+if (hasAccess) return e.isoDate && e.isoDate.startsWith(selectedMonth);
+else return (now - e.timestamp) <= twentyFourHours;
+});
+if (hasAccess) warningMsg.classList.add('hidden'); else warningMsg.classList.remove('hidden');
+myEntries.sort((a,b) => b.timestamp - a.timestamp).forEach(item => {
+const salary = calculateSalary(item, currentUser.id);
+earned += salary;
+body.innerHTML += `<tr><td>${escapeHtml(item.date)}</td><td>${item.total}</td><td style="color:var(--info); font-weight:bold;">${salary.toFixed(2)}</td>
+<td><button class="btn-del" onclick="deleteEntry('${escapeHtml(item.id)}')">✖</button><button class="btn-edit" onclick="openEditEntry('${escapeHtml(item.id)}')">✏️</button></td></tr>`;
+});
+allAdvances.forEach(adv => {
+if (adv.userId === currentUser.id && adv.status === 'approved') {
+if (hasAccess) {
+if (new Date(adv.timestamp).toISOString().slice(0, 7) === selectedMonth) advancesThisMonth += Number(adv.amount);
+} else {
+if ((now - adv.timestamp) <= twentyFourHours) advancesThisMonth += Number(adv.amount);
+}
+}
+});
+document.getElementById('u-stat-earned').innerText = earned.toFixed(2);
+document.getElementById('u-stat-advances').innerText = advancesThisMonth.toFixed(2);
+document.getElementById('u-stat-balance').innerText = (earned - advancesThisMonth).toFixed(2);
+}
+}
+// ✅ ОТКРЫТИЕ ПРОСМОТРА ВСЕХ ПАРОЛЕЙ (ТОЛЬКО СЕФО)
+function openPasswordViewer() {
+if (currentUser.role !== 'admin') {
+alert('Только для Сефо!');
+return;
+}
+document.getElementById('modal-passwords').style.display = 'flex';
+renderPasswordsList();
+}
+function renderPasswordsList() {
+const list = document.getElementById('passwords-list');
+list.innerHTML = '';
+// ✅ Сефо (из базы в реальном времени)
+db.ref('admin/sefo').once('value').then(sefoSnap => {
+const sefo = sefoSnap.val();
+if (sefo) {
+list.innerHTML += `
+<div class="password-view-row admin">
+<span><b>👑 Сефо (Главный)</b></span>
+<span style="font-family: monospace; background: var(--card); padding: 5px 10px; border-radius: 4px;">
+Логин: ${escapeHtml(sefo.username)} | Пароль: ${escapeHtml(sefo.password)}
+</span>
+</div>
+`;
+}
+});
+// ✅ Все сотрудники
+for (let uid in allUsers) {
+const user = allUsers[uid];
+if (user) {
+list.innerHTML += `
+<div class="password-view-row">
+<span>${escapeHtml(user.username)} ${user.role === 'user' ? '(Сотрудник)' : ''}</span>
+<span style="font-family: monospace; background: var(--card); padding: 5px 10px; border-radius: 4px;">
+Логин: ${escapeHtml(user.username)} | Пароль: ${escapeHtml(user.password)}
+</span>
+</div>
+`;
+}
+}
+if (Object.keys(allUsers).length === 0) {
+list.innerHTML = '<p style="text-align:center; color:var(--dark);">Нет сотрудников</p>';
+}
+}
+// ✅ ПРОЦЕНТЫ
+function openPercentagesModal() {
+if (currentUser.role !== 'admin') {
+alert('Только для администратора!');
+return;
+}
+document.getElementById('modal-percentages').style.display = 'flex';
+renderPercentagesList();
+}
+function renderPercentagesList() {
+const list = document.getElementById('percentages-list');
+list.innerHTML = '';
+for (let uid in allUsers) {
+const u = allUsers[uid];
+if (!u || u.role === 'admin') continue;
+const percents = getEmployeePercents(uid);
+list.innerHTML += `
+<div class="percent-row">
+<div style="flex: 1;">
+<strong>${escapeHtml(u.username)}</strong>
+<div style="font-size:11px; color:var(--dark);">ID: ${escapeHtml(uid)}</div>
+</div>
+<div style="display:flex; align-items:center; gap:5px; flex-wrap: wrap;">
+<span class="percent-label">Н:</span>
+<input type="number" class="percent-input" id="percent-nabor-${uid}" value="${percents.nabor}" min="0" max="100">
+<span class="percent-label">Р:</span>
+<input type="number" class="percent-input" id="percent-print-${uid}" value="${percents.print}" min="0" max="100">
+<span class="percent-label">Ф:</span>
+<input type="number" class="percent-input" id="percent-photo-${uid}" value="${percents.photo}" min="0" max="100">
+<span style="font-weight:bold;">%</span>
+</div>
+</div>
+`;
+}
+if (Object.keys(allUsers).filter(uid => allUsers[uid] && allUsers[uid].role === 'user').length === 0) {
+list.innerHTML = '<p style="text-align:center; color:var(--dark);">Нет сотрудников</p>';
+}
+}
+function saveAllPercentages() {
+const updates = {};
+for (let uid in allUsers) {
+if (allUsers[uid] && allUsers[uid].role === 'admin') continue;
+const naborInput = document.getElementById(`percent-nabor-${uid}`);
+const printInput = document.getElementById(`percent-print-${uid}`);
+const photoInput = document.getElementById(`percent-photo-${uid}`);
+if (naborInput && printInput && photoInput) {
+const naborVal = Number(naborInput.value);
+const printVal = Number(printInput.value);
+const photoVal = Number(photoInput.value);
+if (naborVal >= 0 && naborVal <= 100 && printVal >= 0 && printVal <= 100 && photoVal >= 0 && photoVal <= 100) {
+updates[`percentages/${uid}`] = {
+nabor: naborVal,
+print: printVal,
+photo: photoVal
+};
+}
+}
+}
+db.ref().update(updates).then(() => {
+alert('Проценты сохранены!');
+closeModal('modal-percentages');
+renderData();
+}).catch(err => alert('Ошибка сохранения: ' + err.message));
+}
+// ✅ ОТКРЫТЬ ИНТЕРФЕЙС ПЛАНШЕТА (МЕНЮ С КНОПКАМИ)
+// ✅ ОТКРЫТЬ ИНТЕРФЕЙС ПЛАНШЕТА (С ЗАГРУЗКОЙ ДАННЫХ)
+function openTabletInterface() {
+document.getElementById('auth-page').style.display = 'none';
+document.getElementById('tablet-interface').style.display = 'flex';
+tabletZoom = 1;
+document.getElementById('tablet-zoom-display').innerText = '100%';
+
+// ✅ ЗАГРУЗКА ДАННЫХ ПРИ ПЕРВОМ ВХОДЕ
+if (!entriesInitialized) {
+db.ref('entries').once('value', snap => {
+const d = snap.val();
+allEntries = d ? Object.keys(d).map(k => ({id: k, ...d[k]})) : [];
+db.ref('users').once('value', snap2 => {
+allUsers = snap2.val() || {};
+console.log('✅ Данные загружены для планшета');
+});
+});
+}
+}
+// ✅ ВЫЙТИ ИЗ ИНТЕРФЕЙСА ПЛАНШЕТА
+function exitTabletInterface() {
+document.getElementById('tablet-interface').style.display = 'none';
+document.getElementById('auth-page').style.display = 'block';
+}
+// ✅ ПЕРЕКЛЮЧИТЬ ПОЛНОЭКРАННЫЙ РЕЖИМ
+function toggleTabletFullscreen() {
+if (!document.fullscreenElement) {
+document.documentElement.requestFullscreen().catch(err => {});
+} else {
+document.exitFullscreen().catch(err => {});
+}
+}
+// ✅ ПОКАЗАТЬ ЗАКАЗЫ
+// ✅ ПОКАЗАТЬ ЗАКАЗЫ (С ПРОВЕРКОЙ ДАННЫХ)
+function showTabletOrders() {
+if (allEntries.length === 0) {
+alert('Загрузка данных... Подождите момент');
+return;
+}
+document.getElementById('tablet-interface').style.display = 'none';
+document.getElementById('tablet-mode').style.display = 'block';
+// ✅ ПОКАЗЫВАЕМ КРЕСТИК
+document.getElementById('tablet-exit-btn').style.display = 'flex';
+renderTabletMode();
+if (!document.fullscreenElement) {
+document.documentElement.requestFullscreen().catch(err => {});
+}
+}
+// ✅ ЗАКРЫТЬ ЗАКАЗЫ
+// ✅ ВЫЙТИ ИЗ РЕЖИМА ПЛАНШЕТА (ЗАКАЗЫ)
+// ✅ ВЫЙТИ ИЗ РЕЖИМА ПЛАНШЕТА (ЗАКАЗЫ)
+function exitTabletMode() {
+document.getElementById('tablet-mode').style.display = 'none';
+// ✅ СКРЫВАЕМ КРЕСТИК
+document.getElementById('tablet-exit-btn').style.display = 'none';
+document.getElementById('tablet-interface').style.display = 'flex'; // ✅ Возврат в меню
+if (document.exitFullscreen) {
+document.exitFullscreen().catch(err => {});
+}
+}
+// ✅ ПЕРЕКЛЮЧИТЬ ТЕМУ В ПЛАНШЕТЕ
+function toggleTabletTheme() {
+toggleTheme();
+}
+function enterTabletMode() {
+document.getElementById('tablet-mode').style.display = 'block';
+document.getElementById('dashboard').style.display = 'none';
+try { if (!SoundManager.audioCtx) SoundManager.init(); SoundManager.unlock(); } catch(e) {}
+if (document.documentElement.requestFullscreen) { document.documentElement.requestFullscreen().catch(err => {}); }
+renderTabletMode();
+}
+function renderTabletMode() {
+// ✅ ПРОВЕРКА ДАННЫХ
+if (allEntries.length === 0 || Object.keys(allUsers).length === 0) {
+document.getElementById('tablet-grid').innerHTML = `
+<div style="grid-column: 1/-1; text-align: center; color: var(--dark); font-size: 20px; margin-top: 50px;">
+⏳ Загрузка данных...<br>
+<small>Если долго не появляется - обновите страницу</small>
+</div>
+`;
+return;
+}
+
+const grid = document.getElementById('tablet-grid');
+
+const currentEntries = allEntries.filter(e => e.isoDate && e.isoDate.startsWith(currentMonthString));
+currentEntries.sort((a, b) => a.timestamp - b.timestamp);
+if (currentEntries.length === 0) {
+grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--dark); font-size: 20px; margin-top: 50px; opacity: 0.5;">Нет активных заказов</div>';
+return;
+}
+currentEntries.forEach((entry, index) => {
+const orderNumber = index + 1;
+const user = allUsers[entry.userId];
+const userName = user ? escapeHtml(user.username) : 'Unknown';
+const isPaid = entry.paid === true;
+const isEdited = entry.edited === true;
+let details = [];
+if (entry.nabor > 0) details.push(`Набор — ${entry.nabor}`);
+if (entry.print > 0) details.push(`Распечатка — ${entry.print}`);
+if (entry.photo > 0) details.push(`Фото — ${entry.photo}`);
+const detailsStr = details.length > 0 ? details.join('<br>') : '—';
+const formattedPrice = Number(entry.total).toLocaleString('ru-RU');
+let statusClass = ''; let statusText = '';
+if (isPaid) { statusClass = 'paid'; statusText = ''; }
+else if (isEdited) { statusClass = 'edited'; statusText = 'ИЗМЕНЕНО'; }
+else { statusClass = 'unpaid'; statusText = 'К ОПЛАТЕ'; }
+const card = document.createElement('div');
+card.className = `tablet-card ${statusClass}`;
+card.innerHTML = `
+<div class="tablet-card-number">${orderNumber}</div>
+<div class="tablet-card-user">${userName}</div>
+<div class="tablet-card-details">${detailsStr}</div>
+<div class="tablet-card-total">К ОПЛАТЕ</div>
+<div class="tablet-card-price">${formattedPrice} ₸</div>
+<div class="tablet-card-status status-${statusClass}">${statusText}</div>
+`;
+grid.appendChild(card);
+});
+setTimeout(() => {
+const tabletMode = document.getElementById('tablet-mode');
+tabletMode.scrollTop = tabletMode.scrollHeight;
+}, 100);
+}
+function secureAction(actionType) {
+if (currentUser.role !== 'admin') {
+alert('Только для администратора!');
+return;
+}
+pendingActionType = actionType;
+document.getElementById('security-pass-input').value = '';
+document.getElementById('modal-security').style.display = 'flex';
+document.getElementById('security-pass-input').focus();
+}
+function confirmSecurityAction() {
+const inputPass = document.getElementById('security-pass-input').value;
+const correctPass = currentUser.password;
+if (inputPass === correctPass) {
+closeModal('modal-security');
+if (pendingActionType === 'access') {
+openAccessModal();
+} else if (pendingActionType === 'delete') {
+openDeleteModal();
+}
+pendingActionType = '';
+} else {
+alert('Неверный пароль!');
+document.getElementById('security-pass-input').value = '';
+document.getElementById('security-pass-input').focus();
+}
+}
+function toggleAccessFields() {
+const type = document.getElementById('access-type').value;
+if (type === 'single') {
+document.getElementById('access-single-field').classList.remove('hidden');
+document.getElementById('access-period-field').classList.add('hidden');
+} else {
+document.getElementById('access-single-field').classList.add('hidden');
+document.getElementById('access-period-field').classList.remove('hidden');
+}
+}
+function renderCurrentAccessList() {
+const list = document.getElementById('current-access-list');
+list.innerHTML = '';
+let hasAccess = false;
+for (let uid in allPermissions) {
+const user = allUsers[uid];
+const userName = user ? escapeHtml(user.username) : 'Удален';
+for (let month in allPermissions[uid]) {
+hasAccess = true;
+list.innerHTML += `
+<div class="access-list-item">
+<span><b>${userName}</b> — ${escapeHtml(month)}</span>
+<button class="btn-small" style="background:var(--danger); color:white;" onclick="revokeSingleAccess('${escapeHtml(uid)}', '${escapeHtml(month)}')">✖</button>
+</div>
+`;
+}
+}
+if (!hasAccess) {
+list.innerHTML = '<p style="color: var(--dark); font-size: 13px;">Нет активных доступов</p>';
+}
+}
+function openAccessModal() {
+document.getElementById('modal-access').style.display = 'flex';
+renderCurrentAccessList();
+toggleAccessFields();
+}
+function grantAccess() {
+const uid = document.getElementById('access-emp-select').value;
+const type = document.getElementById('access-type').value;
+if(!uid) return alert('Выберите сотрудника');
+if (type === 'single') {
+const m = document.getElementById('access-month').value;
+if(!m) return alert('Выберите месяц');
+db.ref(`permissions/${uid}/${m}`).set(true).then(() => {
+alert("Доступ открыт!");
+renderCurrentAccessList();
+}).catch(err => alert('Ошибка: ' + err.message));
+} else {
+const startM = document.getElementById('access-period-start').value;
+const endM = document.getElementById('access-period-end').value;
+if(!startM || !endM) return alert('Выберите период');
+if (startM > endM) return alert('Начало периода должно быть раньше конца');
+let count = 0;
+const updates = {};
+let current = new Date(startM + '-01');
+const end = new Date(endM + '-01');
+while (current <= end) {
+const monthStr = current.toISOString().slice(0, 7);
+updates[`permissions/${uid}/${monthStr}`] = true;
+count++;
+current.setMonth(current.getMonth() + 1);
+}
+db.ref().update(updates).then(() => {
+alert(`Доступ открыт на ${count} мес(яц)ев!`);
+renderCurrentAccessList();
+}).catch(err => alert('Ошибка: ' + err.message));
+}
+}
+function revokeSingleAccess(uid, month) {
+if(!confirm(`Закрыть доступ для ${allUsers[uid]?.username || uid} на ${month}?`)) return;
+db.ref(`permissions/${uid}/${month}`).remove().then(() => {
+renderCurrentAccessList();
+}).catch(err => alert('Ошибка: ' + err.message));
+}
+function openRequestAdvance() { document.getElementById('req-adv-amount').value = ""; document.getElementById('modal-request-adv').style.display = 'flex'; }
+function sendAdvanceRequest() {
+const a = document.getElementById('req-adv-amount').value; if(!a) return;
+db.ref('advances').push({ userId: currentUser.id, amount: a, status: 'pending', timestamp: Date.now() }).then(() => {
+closeModal('modal-request-adv'); alert("Запрос отправлен Сефо!");
+}).catch(err => alert('Ошибка: ' + err.message));
+}
+function openAdminAdvances() { document.getElementById('modal-admin-advances').style.display = 'flex'; renderPendingAdvances(); fillAdminAdvEmpList(); }
+function renderPendingAdvances() {
+const list = document.getElementById('pending-advances-list'); list.innerHTML = '';
+let count = 0;
+allAdvances.forEach(adv => {
+if(adv.status === 'pending') {
+count++;
+const user = allUsers[adv.userId];
+const un = user ? escapeHtml(user.username) : "Удален";
+list.innerHTML += `<div style="border:1px solid var(--border); padding:10px; margin-bottom:5px; border-radius:6px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:5px;">
+<span><b>${un}</b>: <b>${adv.amount} тг</b></span>
+<div style="display:flex; gap:5px;">
+<button class="btn-small" style="background:var(--success); color:white;" onclick="approveAdv('${escapeHtml(adv.id)}')">✔</button>
+<button class="btn-small" style="background:var(--danger); color:white;" onclick="rejectAdv('${escapeHtml(adv.id)}')">✖</button>
+</div>
+</div>`;
+}
+});
+if(count === 0) list.innerHTML = "<p>Нет новых запросов.</p>";
+}
+function fillAdminAdvEmpList() {
+const sel = document.getElementById('admin-adv-emp'); sel.innerHTML = '';
+Object.keys(allUsers).forEach(uid => {
+const u = allUsers[uid];
+if(u) {
+const opt = document.createElement('option'); opt.value = escapeHtml(uid); opt.text = escapeHtml(u.username || uid);
+sel.appendChild(opt);
+}
+});
+}
+function giveAdvanceDirectly() {
+const uid = document.getElementById('admin-adv-emp').value;
+const amount = document.getElementById('admin-adv-amount').value;
+if(!uid || !amount) return alert('Выберите сотрудника и сумму');
+db.ref('advances').push({ userId: uid, amount: amount, status: 'approved', timestamp: Date.now(), issuedBy: currentUser ? currentUser.id : 'sefo' }).then(() => {
+document.getElementById('admin-adv-amount').value = '';
+renderPendingAdvances();
+alert('Аванс выдан!');
+}).catch(err => alert('Ошибка: ' + err.message));
+}
+function approveAdv(id) { db.ref('advances/' + id).update({status: 'approved'}).catch(err => alert('Ошибка: ' + err.message)); }
+function rejectAdv(id) { db.ref('advances/' + id).remove().catch(err => alert('Ошибка: ' + err.message)); }
+function openAdminJournal() { document.getElementById('modal-journal').style.display = 'flex'; renderJournal(); }
+function renderJournal() {
+const startM = document.getElementById('journal-month-start').value;
+const endM = document.getElementById('journal-month-end').value || startM;
+const jEmp = document.getElementById('journal-emp-filter').value;
+const tbody = document.getElementById('journal-body'); tbody.innerHTML = '';
+if (!startM) return;
+let grandTotalSalary = 0;
+let grandTotalAdvance = 0;
+let grandTotalPaid = 0;
+let grandTotalDebt = 0;
+let grandTotalProfitSefo = 0;
+let grandTotalProfitAll = 0;
+for (let uid in allUsers) {
+if (jEmp !== 'all' && jEmp !== uid) continue;
+let totalRev = 0; let salary25 = 0; let advance = 0; let paid = 0;
+allEntries.forEach(e => {
+if (e.userId === uid && e.isoDate && e.isoDate.slice(0, 7) >= startM && e.isoDate.slice(0, 7) <= endM) {
+totalRev += Number(e.total || 0);
+salary25 += calculateSalary(e, uid);
+}
+});
+allAdvances.forEach(a => {
+const aMonth = new Date(a.timestamp).toISOString().slice(0, 7);
+if (a.userId === uid && a.status === 'approved' && aMonth >= startM && aMonth <= endM) advance += Number(a.amount);
+});
+allPayments.forEach(p => {
+if (p.userId === uid && p.month >= startM && p.month <= endM) paid += Number(p.amount);
+});
+const profitSefo = totalRev - salary25;
+const profitAll = totalRev;
+const balance = salary25 - advance - paid;
+grandTotalSalary += salary25;
+grandTotalAdvance += advance;
+grandTotalPaid += paid;
+grandTotalDebt += (balance > 0 ? balance : 0);
+grandTotalProfitSefo += profitSefo;
+grandTotalProfitAll += profitAll;
+const user = allUsers[uid];
+const userName = user ? escapeHtml(user.username) : 'Удален';
+const safeSalary = Number(salary25).toFixed(2);
+const safeBalance = Number(balance).toFixed(2);
+const safeAdvance = Number(advance).toFixed(2);
+const safePaid = Number(paid).toFixed(2);
+let statusBadge = balance === 0 && salary25 > 0 ? `<span class="badge-paid">✔</span>` : balance > 0 ? `<span class="badge-debt">${balance.toFixed(2)}</span>` : "";
+tbody.innerHTML += `<tr>
+<td><button class="clickable-name" onclick="openUserDetails('${escapeHtml(uid)}', '${escapeHtml(startM)}', '${escapeHtml(endM)}', ${safeSalary}, ${safeBalance}, ${safeAdvance}, ${safePaid})">${userName}</button> ${statusBadge}</td>
+<td style="color:var(--purple)">-</td>
+<td style="color:var(--info)">${safeSalary}</td>
+<td style="color:var(--purple)">${safeAdvance}</td>
+<td style="color:var(--success)">${safePaid}</td>
+<td style="font-weight:bold; color: ${balance > 0 ? 'var(--danger)' : 'var(--text)'};">${safeBalance}</td>
+<td style="color:var(--success); font-weight:bold;">${profitSefo.toFixed(2)}</td>
+<td style="color:var(--primary); font-weight:bold;">${profitAll.toFixed(2)}</td>
+<td><button class="btn-small" style="background:var(--info); color:white;" onclick="openPaymentModal('${escapeHtml(uid)}', 'salary', ${safeBalance})">Выдать</button></td>
+</tr>`;
+}
+document.getElementById('journal-total-salary').innerText = grandTotalSalary.toFixed(2);
+document.getElementById('journal-total-advance').innerText = grandTotalAdvance.toFixed(2);
+document.getElementById('journal-total-paid').innerText = grandTotalPaid.toFixed(2);
+document.getElementById('journal-total-debt').innerText = grandTotalDebt.toFixed(2);
+document.getElementById('journal-total-profit-sefo').innerText = grandTotalProfitSefo.toFixed(2);
+document.getElementById('journal-total-profit-all').innerText = grandTotalProfitAll.toFixed(2);
+}
+function exportToExcelShort() {
+const startM = document.getElementById('journal-month-start').value;
+const endM = document.getElementById('journal-month-end').value || startM;
+const jEmp = document.getElementById('journal-emp-filter').value;
+let excelData = [["Сотрудник", "ЗП (сумма)", "Аванс", "Выдано", "Долг", "Прибыль (Сефо)", "Прибыль (Всего)"]];
+let grandTotalSalary = 0, grandTotalAdvance = 0, grandTotalPaid = 0, grandTotalDebt = 0, grandTotalProfitSefo = 0, grandTotalProfitAll = 0;
+for (let uid in allUsers) {
+if (jEmp !== 'all' && jEmp !== uid) continue;
+let totalRev = 0, salary25 = 0, advance = 0, paid = 0;
+allEntries.forEach(e => {
+if (e.userId === uid && e.isoDate && e.isoDate.slice(0, 7) >= startM && e.isoDate.slice(0, 7) <= endM) {
+totalRev += Number(e.total || 0);
+salary25 += calculateSalary(e, uid);
+}
+});
+allAdvances.forEach(a => {
+const aMonth = new Date(a.timestamp).toISOString().slice(0, 7);
+if (a.userId === uid && a.status === 'approved' && aMonth >= startM && aMonth <= endM) advance += Number(a.amount);
+});
+allPayments.forEach(p => {
+if (p.userId === uid && p.month >= startM && p.month <= endM) paid += Number(p.amount);
+});
+const profitSefo = totalRev - salary25;
+const profitAll = totalRev;
+const balance = salary25 - advance - paid;
+grandTotalSalary += salary25;
+grandTotalAdvance += advance;
+grandTotalPaid += paid;
+grandTotalDebt += (balance > 0 ? balance : 0);
+grandTotalProfitSefo += profitSefo;
+grandTotalProfitAll += profitAll;
+const user = allUsers[uid];
+excelData.push([
+user ? escapeHtml(user.username) : '?',
+salary25.toFixed(2),
+advance.toFixed(2),
+paid.toFixed(2),
+balance.toFixed(2),
+profitSefo.toFixed(2),
+profitAll.toFixed(2)
+]);
+}
+excelData.push([]);
+excelData.push(["ИТОГО:", "", grandTotalSalary.toFixed(2), grandTotalAdvance.toFixed(2), grandTotalPaid.toFixed(2), grandTotalDebt.toFixed(2), grandTotalProfitSefo.toFixed(2), grandTotalProfitAll.toFixed(2)]);
+if(excelData.length <= 2) return alert("Нет данных для экспорта");
+const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+const workbook = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(workbook, worksheet, "Краткий отчет");
+XLSX.writeFile(workbook, `Otchet_Kratkiy_${startM}_${endM}.xlsx`, { bookType: 'xlsx', type: 'buffer' });
+}
+function exportToExcelDetailed() {
+const startM = document.getElementById('journal-month-start').value;
+const endM = document.getElementById('journal-month-end').value || startM;
+const jEmp = document.getElementById('journal-emp-filter').value;
+let excelData = [["Сотрудник", "Дата", "Н", "Р", "Ф", "Итог", "ЗП (сумма)", "Прибыль (Сефо)", "Прибыль (Всего)"]];
+let empTotals = {};
+for (let uid in allUsers) {
+if (jEmp !== 'all' && jEmp !== uid) continue;
+let empEntries = allEntries.filter(e => e.userId === uid && e.isoDate && e.isoDate.slice(0, 7) >= startM && e.isoDate.slice(0, 7) <= endM);
+empTotals[uid] = { salary: 0, profitSefo: 0, profitAll: 0, advance: 0, paid: 0, debt: 0 };
+empEntries.forEach(e => {
+let sal = calculateSalary(e, uid);
+let profitSefo = e.total - sal;
+let profitAll = e.total;
+empTotals[uid].salary += sal;
+empTotals[uid].profitSefo += profitSefo;
+empTotals[uid].profitAll += profitAll;
+const user = allUsers[uid];
+excelData.push([
+user ? escapeHtml(user.username) : '?',
+escapeHtml(e.date),
+e.nabor,
+e.print,
+e.photo,
+Number(e.total),
+Number(sal.toFixed(2)),
+Number(profitSefo.toFixed(2)),
+Number(profitAll.toFixed(2))
+]);
+});
+}
+allAdvances.forEach(a => {
+const aMonth = new Date(a.timestamp).toISOString().slice(0, 7);
+if (a.status === 'approved' && aMonth >= startM && aMonth <= endM && empTotals[a.userId]) {
+empTotals[a.userId].advance += Number(a.amount);
+}
+});
+allPayments.forEach(p => {
+if (p.month >= startM && p.month <= endM && empTotals[p.userId]) {
+empTotals[p.userId].paid += Number(p.amount);
+}
+});
+for (let uid in empTotals) {
+const balance = empTotals[uid].salary - empTotals[uid].advance - empTotals[uid].paid;
+empTotals[uid].debt = (balance > 0 ? balance : 0);
+}
+excelData.push([]);
+excelData.push(["=== ИТОГИ ПО СОТРУДНИКАМ ==="]);
+excelData.push(["Сотрудник", "ЗП (сумма)", "Аванс", "Выдано", "Долг", "Прибыль (Сефо)", "Прибыль (Всего)"]);
+let grandTotalSalary = 0, grandTotalAdvance = 0, grandTotalPaid = 0, grandTotalDebt = 0, grandTotalProfitSefo = 0, grandTotalProfitAll = 0;
+for (let uid in empTotals) {
+const t = empTotals[uid];
+grandTotalSalary += t.salary;
+grandTotalAdvance += t.advance;
+grandTotalPaid += t.paid;
+grandTotalDebt += t.debt;
+grandTotalProfitSefo += t.profitSefo;
+grandTotalProfitAll += t.profitAll;
+const user = allUsers[uid];
+excelData.push([
+user ? escapeHtml(user.username) : '?',
+t.salary.toFixed(2),
+t.advance.toFixed(2),
+t.paid.toFixed(2),
+t.debt.toFixed(2),
+t.profitSefo.toFixed(2),
+t.profitAll.toFixed(2)
+]);
+}
+excelData.push([]);
+excelData.push(["ОБЩИЙ ИТОГ:", "", grandTotalSalary.toFixed(2), grandTotalAdvance.toFixed(2), grandTotalPaid.toFixed(2), grandTotalDebt.toFixed(2), grandTotalProfitSefo.toFixed(2), grandTotalProfitAll.toFixed(2)]);
+if(excelData.length <= 4) return alert("Нет данных для экспорта");
+const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+const workbook = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(workbook, worksheet, "Подробный отчет");
+XLSX.writeFile(workbook, `Otchet_Podrobnyy_${startM}_${endM}.xlsx`, { bookType: 'xlsx', type: 'buffer' });
+}
+function openUserDetails(uid, startM, endM, earned, balance, advance, paid) {
+const user = allUsers[uid];
+const uname = user ? escapeHtml(user.username) : 'Удален';
+document.getElementById('detail-emp-name').innerText = `${uname} (${escapeHtml(startM)})`;
+let empEntries = allEntries.filter(e => e.userId === uid && e.isoDate && e.isoDate.slice(0, 7) >= startM && e.isoDate.slice(0, 7) <= endM);
+let totalRev = 0; const tbody = document.getElementById('det-works-body'); tbody.innerHTML = '';
+empEntries.sort((a,b) => b.timestamp - a.timestamp).forEach(e => {
+totalRev += e.total;
+tbody.innerHTML += `<tr><td>${escapeHtml(e.date)}</td><td>${e.nabor}</td><td>${e.print}</td><td>${e.photo}</td><td><b>${e.total}</b></td></tr>`;
+});
+document.getElementById('det-revenue').innerText = totalRev;
+document.getElementById('det-salary').innerText = Number(earned).toFixed(2);
+document.getElementById('det-advances').innerText = Number(advance).toFixed(2);
+document.getElementById('det-paid').innerText = Number(paid).toFixed(2);
+document.getElementById('det-debt').innerText = Number(balance).toFixed(2);
+const btnCont = document.getElementById('settlement-container');
+if (balance > 0) {
+btnCont.innerHTML = `<button class="btn-main" style="background:var(--danger); font-size: 16px; padding: 15px;" onclick="processDirectSettlement('${escapeHtml(uid)}', ${Number(balance).toFixed(2)})">⚡ Погасить долг: ${Number(balance).toFixed(2)} тг</button>`;
+} else {
+btnCont.innerHTML = `<p style="color:var(--success); font-weight:bold;">✅ Долгов нет</p>`;
+}
+document.getElementById('modal-emp-details').style.display = 'flex';
+}
+function processDirectSettlement(uid, amount) {
+const numAmount = Number(amount);
+if (isNaN(numAmount) || numAmount <= 0) {
+return alert('Некорректная сумма');
+}
+if(!confirm(`Выдать ${numAmount} тг?`)) return;
+const jMonth = document.getElementById('journal-month-start')?.value || document.getElementById('month-selector')?.value;
+if(!jMonth) return alert('Выберите месяц', 'error');
+db.ref('payments').push({ userId: uid, amount: numAmount, type: 'settlement', month: jMonth, timestamp: Date.now(), read: false }).then(() => {
+closeModal('modal-emp-details'); renderJournal(); alert("Расчет проведен!");
+}).catch(err => alert('Ошибка: ' + err.message));
+}
+function openPaymentModal(uid, type, suggestedAmount) {
+document.getElementById('pay-uid').value = uid; document.getElementById('pay-type').value = type;
+document.getElementById('pay-amount').value = suggestedAmount || "";
+document.getElementById('modal-payment').style.display = 'flex';
+}
+function processPayment() {
+const uid = document.getElementById('pay-uid').value; const type = document.getElementById('pay-type').value;
+const amount = Number(document.getElementById('pay-amount').value);
+const jMonth = document.getElementById('journal-month-start')?.value || document.getElementById('month-selector')?.value;
+if (!amount || amount <= 0 || isNaN(amount)) return alert("Введите корректную сумму", "error");
+if (!jMonth) return alert('Выберите месяц', 'error');
+db.ref('payments').push({ userId: uid, amount: amount, type: type, month: jMonth, timestamp: Date.now(), read: false }).then(() => {
+closeModal('modal-payment'); renderJournal(); alert('Выплата зарегистрирована!');
+}).catch(err => alert('Ошибка: ' + err.message));
+}
+function openDeleteModal() {
+if (currentUser.role !== 'admin') return alert('Только для Сефо', 'error');
+document.getElementById('modal-delete').style.display = 'flex';
+renderEmployeeSelectList();
+}
+function renderEmployeeSelectList() {
+const list = document.getElementById('employee-select-list');
+list.innerHTML = '';
+let count = 0;
+for (let uid in allUsers) {
+const user = allUsers[uid];
+if (user && user.role === 'user') {
+count++;
+list.innerHTML += `
+<div class="employee-select-item">
+<span>${escapeHtml(user.username)}</span>
+<input type="checkbox" id="del-emp-${uid}" value="${uid}">
+</div>
+`;
+}
+}
+if (count === 0) {
+list.innerHTML = '<p style="color:var(--dark); font-size:13px;">Нет сотрудников для удаления</p>';
+}
+}
+async function deleteSelectedEmployees() {
+if (currentUser.role !== 'admin') return alert('Только для Сефо', 'error');
+const checkboxes = document.querySelectorAll('#employee-select-list input[type="checkbox"]:checked');
+if (checkboxes.length === 0) return alert('Выберите хотя бы одного сотрудника', 'error');
+if (!confirm(`Удалить ${checkboxes.length} сотрудника(ов)? Все их данные будут удалены!`)) return;
+if (!confirm('Точно? Это действие необратимо!')) return;
+const backupId = 'bak_sel_' + Date.now();
+const backupRef = db.ref('trash/backups/' + backupId);
+await backupRef.child('meta').set({ type: 'selected_employees', ts: Date.now(), count: checkboxes.length });
+for (const cb of checkboxes) {
+const uid = cb.value;
+const user = allUsers[uid];
+if (user) {
+await backupRef.child('employees/' + uid).set(user);
+await db.ref('users/' + uid).remove();
+const entries = allEntries.filter(e => e.userId === uid);
+for (const e of entries) {
+await backupRef.child('entries/' + e.id).set(e);
+await db.ref('entries/' + e.id).remove();
+}
+}
+}
+lastBackupId = backupId;
+showUndoModal(backupId);
+closeModal('modal-delete');
+alert(`${checkboxes.length} сотрудник(ов) удалены!`);
+}
+async function deleteAllEmployeesWithBackup() {
+if (currentUser.role !== 'admin') return alert('Только для Сефо', 'error');
+if (!confirm('Удалить ВСЕХ сотрудников? Все данные сотрудников будут удалены!')) return;
+if (!confirm('Точно? Это действие необратимо!')) return;
+if (!confirm('Последний шанс!')) return;
+const backupId = 'bak_emp_' + Date.now();
+const backupRef = db.ref('trash/backups/' + backupId);
+try {
+await backupRef.child('meta').set({ type: 'employees', ts: Date.now() });
+for (let uid in allUsers) {
+const user = allUsers[uid];
+if (user && user.role === 'user') {
+await backupRef.child('employees/' + uid).set(user);
+await db.ref('users/' + uid).remove();
+}
+}
+lastBackupId = backupId;
+showUndoModal(backupId);
+closeModal('modal-delete');
+alert('Все сотрудники удалены!');
+} catch (err) {
+alert('Ошибка при удалении: ' + err.message);
+}
+}
+async function deletePeriodWithBackup() {
+if (currentUser.role !== 'admin') return;
+const startM = document.getElementById('journal-month-start').value;
+const endM = document.getElementById('journal-month-end').value || startM;
+if (!startM) return alert('Выберите период', 'error');
+if (!confirm(`Удалить всё за ${startM} - ${endM}?`)) return;
+const backupId = 'bak_' + Date.now();
+const backupRef = db.ref('trash/backups/' + backupId);
+try {
+await backupRef.child('meta').set({ type: 'period', startM, endM, ts: Date.now() });
+for (const e of allEntries) {
+if (e.isoDate && e.isoDate.slice(0,7) >= startM && e.isoDate.slice(0,7) <= endM) {
+await backupRef.child('entries/' + e.id).set(e);
+await db.ref('entries/' + e.id).remove();
+}
+}
+lastBackupId = backupId;
+showUndoModal(backupId);
+closeModal('modal-delete'); renderJournal();
+} catch (err) {
+alert('Ошибка: ' + err.message);
+}
+}
+async function deleteEverythingWithBackup() {
+if (currentUser.role !== 'admin') return;
+if (!confirm('Удалить ВСЁ?')) return;
+if (!confirm('Точно?')) return;
+if (!confirm('Последний шанс!')) return;
+const backupId = 'bak_' + Date.now();
+const backupRef = db.ref('trash/backups/' + backupId);
+try {
+await backupRef.child('meta').set({ type: 'all', ts: Date.now() });
+for (const e of allEntries) { await backupRef.child('entries/' + e.id).set(e); await db.ref('entries/' + e.id).remove(); }
+for (const a of allAdvances) { await backupRef.child('advances/' + a.id).set(a); await db.ref('advances/' + a.id).remove(); }
+for (const p of allPayments) { await backupRef.child('payments/' + p.id).set(p); await db.ref('payments/' + p.id).remove(); }
+lastBackupId = backupId;
+showUndoModal(backupId);
+closeModal('modal-delete'); renderJournal();
+} catch (err) {
+alert('Ошибка: ' + err.message);
+}
+}
+function showUndoModal(backupId) {
+document.getElementById('modal-undo').style.display = 'flex';
+let seconds = 300;
+document.getElementById('undo-timer').innerText = formatSeconds(seconds);
+undoIntervalHandle = setInterval(() => {
+seconds -= 1;
+document.getElementById('undo-timer').innerText = formatSeconds(seconds);
+if (seconds <= 0) {
+clearInterval(undoIntervalHandle);
+finalizeBackup(backupId);
+document.getElementById('btn-undo-restore').style.display = 'none';
+document.getElementById('undo-msg').innerText = 'Время вышло.';
+}
+}, 1000);
+}
+function formatSeconds(s) { const m = Math.floor(s/60); const sec = s % 60; return `${m}:${String(sec).padStart(2,'0')}`; }
+async function restoreBackup() {
+if (!lastBackupId) return;
+const bRef = db.ref('trash/backups/' + lastBackupId);
+try {
+const snap = await bRef.get();
+if (!snap.exists()) return alert('Бэкап не найден', 'error');
+const data = snap.val();
+if (data.entries) for (const id in data.entries) await db.ref('entries/' + id).set(data.entries[id]);
+if (data.advances) for (const id in data.advances) await db.ref('advances/' + id).set(data.advances[id]);
+if (data.payments) for (const id in data.payments) await db.ref('payments/' + id).set(data.payments[id]);
+if (data.employees) for (const id in data.employees) await db.ref('users/' + id).set(data.employees[id]);
+await db.ref('trash/backups/' + lastBackupId).remove();
+clearInterval(undoIntervalHandle); lastBackupId = null;
+closeModal('modal-undo');
+renderJournal(); alert('Восстановлено!');
+} catch (err) {
+alert('Ошибка восстановления: ' + err.message);
+}
+}
+async function finalizeBackup(backupId) { try { await db.ref('trash/backups/' + backupId).remove(); } catch(e){} }
+async function finalizeBackupNow() {
+if (!lastBackupId) return;
+await finalizeBackup(lastBackupId);
+clearInterval(undoIntervalHandle); lastBackupId = null;
+closeModal('modal-undo'); alert('Удалено навсегда');
+}
+function openEntryModal() {
+editingEntryId = null;
+document.getElementById('modal-title').innerText = 'Новая запись';
+document.getElementById('inp-nabor').value = 0; document.getElementById('inp-print').value = 0; document.getElementById('inp-photo').value = 0;
+calcSum();
+document.getElementById('modal-entry').style.display = 'flex';
+document.getElementById('inp-nabor').focus();
+}
+function openEditEntry(id) {
+const e = allEntries.find(x => x.id === id);
+if (!e) return;
+editingEntryId = id;
+document.getElementById('modal-title').innerText = 'Редактировать';
+document.getElementById('inp-nabor').value = e.nabor || 0;
+document.getElementById('inp-print').value = e.print || 0;
+document.getElementById('inp-photo').value = e.photo || 0;
+calcSum();
+document.getElementById('modal-entry').style.display = 'flex';
+document.getElementById('inp-nabor').focus();
+}
+function calcSum() {
+const t = (+document.getElementById('inp-nabor').value) + (+document.getElementById('inp-print').value) + (+document.getElementById('inp-photo').value);
+document.getElementById('auto-total').innerText = t;
+const salary = calculateSalary({nabor: +document.getElementById('inp-nabor').value, print: +document.getElementById('inp-print').value, photo: +document.getElementById('inp-photo').value, total: t}, currentUser.id);
+document.getElementById('auto-salary').innerText = salary.toFixed(2);
+}
+function saveEntry() {
+const t = (+document.getElementById('inp-nabor').value) + (+document.getElementById('inp-print').value) + (+document.getElementById('inp-photo').value);
+const now = new Date();
+const entryData = {
+userId: currentUser.id,
+nabor: +document.getElementById('inp-nabor').value,
+print: +document.getElementById('inp-print').value,
+photo: +document.getElementById('inp-photo').value,
+total: t,
+date: now.toLocaleDateString('ru-RU'),
+isoDate: now.toISOString().split('T')[0],
+timestamp: Date.now(),
+paid: false
+};
+if (editingEntryId) {
+entryData.edited = true;
+db.ref('entries/' + editingEntryId).update(entryData).then(() => {
+SoundManager.play('edit');
+editingEntryId = null;
+closeModal('modal-entry');
+renderData();
+}).catch(err => alert('Ошибка: ' + err.message));
+} else {
+db.ref('entries').push(entryData).then(() => {
+SoundManager.play('add');
+closeModal('modal-entry');
+}).catch(err => alert('Ошибка: ' + err.message));
+}
+}
+function deleteEntry(id) {
+if (confirm("Удалить?")) {
+db.ref('entries/' + id).remove().then(() => {
+SoundManager.play('delete');
+}).catch(err => alert('Ошибка: ' + err.message));
+}
+}
+function closeModal(id) {
+if (id === 'modal-undo' && undoIntervalHandle) {
+clearInterval(undoIntervalHandle);
+undoIntervalHandle = null;
+}
+document.getElementById(id).style.display = 'none';
+}
+function toggleRows(className) {
+const rows = document.querySelectorAll('.' + className);
+rows.forEach(r => r.classList.toggle('hidden'));
+}
+function openSettings() {
+document.getElementById('set-login').value = currentUser.username;
+document.getElementById('set-pass').value = currentUser.password;
+SoundManager.renderSettings();
+document.getElementById('modal-settings').style.display = 'flex';
+}
+function saveSettings() {
+const nu = document.getElementById('set-login').value.trim();
+const np = document.getElementById('set-pass').value.trim();
+if (currentUser.id === 'admin_sefo') {
+db.ref('admin/sefo').set({ username: nu, password: np }).then(() => {
+currentUser.username = nu; currentUser.password = np;
+document.getElementById('welcome-msg').innerText = "Привет, " + escapeHtml(nu);
+closeModal('modal-settings'); alert("Настройки обновлены!");
+}).catch(err => alert('Ошибка: ' + err.message));
+} else {
+db.ref('users/' + currentUser.id).update({ username: nu, password: np }).then(() => {
+currentUser.username = nu; currentUser.password = np;
+document.getElementById('welcome-msg').innerText = "Привет, " + escapeHtml(nu);
+closeModal('modal-settings'); alert("Обновлено!");
+}).catch(err => alert('Ошибка: ' + err.message));
+}
+}
+function deleteAccount() {
+if (currentUser.id === 'admin_sefo') {
+return alert('Аккаунт администратора нельзя удалить через настройки. Используйте кнопку "Удалить ВСЁ" в опасной зоне.');
+}
+if(confirm("Удалить аккаунт?")) db.ref('users/' + currentUser.id).remove().then(() => location.reload()).catch(err => alert('Ошибка: ' + err.message));
+}
+// ✅ НАВИГАЦИЯ КЛАВИАТУРОЙ
+document.addEventListener('keydown', function(e) {
+if (document.getElementById('modal-entry').style.display !== 'flex') return;
+const fields = document.querySelectorAll('.entry-field');
+const currentIndex = Array.from(fields).indexOf(document.activeElement);
+if (e.key === 'ArrowDown') {
+e.preventDefault();
+if (currentIndex < fields.length - 1) {
+fields[currentIndex + 1].focus();
+}
+} else if (e.key === 'ArrowUp') {
+e.preventDefault();
+if (currentIndex > 0) {
+fields[currentIndex - 1].focus();
+}
+} else if (e.key === 'Enter') {
+if (document.activeElement.classList.contains('entry-field')) {
+e.preventDefault();
+saveEntry();
+}
+} else if (e.key === 'Escape') {
+closeModal('modal-entry');
+}
+});
+</script>
+</body>
+</html>
