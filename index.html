@@ -687,6 +687,8 @@ let allPercentages = {};
 let editingEntryId = null;
 let previousEntriesCount = 0;
 let entriesInitialized = false;
+let tabletRealtimeBound = false;
+let lastTabletEntriesCount = 0;
 let pendingActionType = '';
 let currentZoom = 1;
 let tabletZoom = 1; // ✅ Зум для планшета
@@ -1228,18 +1230,24 @@ document.getElementById('auth-page').style.display = 'none';
 document.getElementById('tablet-interface').style.display = 'flex';
 tabletZoom = 1;
 document.getElementById('tablet-zoom-display').innerText = '100%';
+bindTabletRealtime();
+}
 
-// ✅ ЗАГРУЗКА ДАННЫХ ПРИ ПЕРВОМ ВХОДЕ
-if (!entriesInitialized) {
-db.ref('entries').once('value', snap => {
+function bindTabletRealtime() {
+if (tabletRealtimeBound) return;
+tabletRealtimeBound = true;
+
+db.ref('users').on('value', snap => {
+allUsers = snap.val() || {};
+if (document.getElementById('tablet-mode').style.display === 'block') renderTabletMode();
+});
+
+db.ref('entries').on('value', snap => {
 const d = snap.val();
 allEntries = d ? Object.keys(d).map(k => ({id: k, ...d[k]})) : [];
-db.ref('users').once('value', snap2 => {
-allUsers = snap2.val() || {};
-console.log('✅ Данные загружены для планшета');
+entriesInitialized = true;
+if (document.getElementById('tablet-mode').style.display === 'block') renderTabletMode();
 });
-});
-}
 }
 // ✅ ВЫЙТИ ИЗ ИНТЕРФЕЙСА ПЛАНШЕТА
 function exitTabletInterface() {
@@ -1255,32 +1263,31 @@ document.exitFullscreen().catch(err => {});
 }
 }
 // ✅ ПОКАЗАТЬ ЗАКАЗЫ
-// ✅ ПОКАЗАТЬ ЗАКАЗЫ (С ПРОВЕРКОЙ ДАННЫХ)
+// ✅ ПОКАЗАТЬ ЗАКАЗЫ
 function showTabletOrders() {
-if (allEntries.length === 0) {
-alert('Загрузка данных... Подождите момент');
-return;
-}
-document.getElementById('tablet-interface').style.display = 'none';
-document.getElementById('tablet-mode').style.display = 'block';
-// ✅ ПОКАЗЫВАЕМ КРЕСТИК
-document.getElementById('tablet-exit-btn').style.display = 'flex';
-renderTabletMode();
-if (!document.fullscreenElement) {
-document.documentElement.requestFullscreen().catch(err => {});
-}
+    document.getElementById('tablet-interface').style.display = 'none';
+    document.getElementById('tablet-mode').style.display = 'block';
+    document.getElementById('tablet-exit-btn').style.display = 'flex';
+    
+    // ✅ ПЕРВЫЙ РЕНДЕР СРАЗУ
+    renderTabletMode();
+    
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {});
+    }
 }
 // ✅ ЗАКРЫТЬ ЗАКАЗЫ
 // ✅ ВЫЙТИ ИЗ РЕЖИМА ПЛАНШЕТА (ЗАКАЗЫ)
 // ✅ ВЫЙТИ ИЗ РЕЖИМА ПЛАНШЕТА (ЗАКАЗЫ)
+// ✅ ВЫЙТИ ИЗ РЕЖИМА ПЛАНШЕТА (ОСТАНОВКА ОБНОВЛЕНИЯ)
 function exitTabletMode() {
-document.getElementById('tablet-mode').style.display = 'none';
-// ✅ СКРЫВАЕМ КРЕСТИК
-document.getElementById('tablet-exit-btn').style.display = 'none';
-document.getElementById('tablet-interface').style.display = 'flex'; // ✅ Возврат в меню
-if (document.exitFullscreen) {
-document.exitFullscreen().catch(err => {});
-}
+    document.getElementById('tablet-mode').style.display = 'none';
+    document.getElementById('tablet-exit-btn').style.display = 'none';
+    document.getElementById('tablet-interface').style.display = 'flex';
+    
+    if (document.exitFullscreen) {
+        document.exitFullscreen().catch(err => {});
+    }
 }
 // ✅ ПЕРЕКЛЮЧИТЬ ТЕМУ В ПЛАНШЕТЕ
 function toggleTabletTheme() {
@@ -1294,57 +1301,72 @@ if (document.documentElement.requestFullscreen) { document.documentElement.reque
 renderTabletMode();
 }
 function renderTabletMode() {
-// ✅ ПРОВЕРКА ДАННЫХ
-if (allEntries.length === 0 || Object.keys(allUsers).length === 0) {
-document.getElementById('tablet-grid').innerHTML = `
-<div style="grid-column: 1/-1; text-align: center; color: var(--dark); font-size: 20px; margin-top: 50px;">
-⏳ Загрузка данных...<br>
-<small>Если долго не появляется - обновите страницу</small>
-</div>
-`;
-return;
-}
+    const grid = document.getElementById('tablet-grid');
+    
+    // ✅ ПРОВЕРКА ДАННЫХ
+    if (!allEntries || allEntries.length === 0 || !allUsers || Object.keys(allUsers).length === 0) {
+        grid.innerHTML = `
+        <div style="grid-column: 1/-1; text-align: center; color: var(--dark); font-size: 20px; margin-top: 50px;">
+        ⏳ Загрузка данных...
+        </div>`;
+        return;
+    }
 
-const grid = document.getElementById('tablet-grid');
+    // ✅ ГЛАВНОЕ: ОЧИЩАЕМ СЕТКУ ПЕРЕД КАЖДЫМ РЕНДЕРОМ!
+    grid.innerHTML = '';
 
-const currentEntries = allEntries.filter(e => e.isoDate && e.isoDate.startsWith(currentMonthString));
-currentEntries.sort((a, b) => a.timestamp - b.timestamp);
-if (currentEntries.length === 0) {
-grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--dark); font-size: 20px; margin-top: 50px; opacity: 0.5;">Нет активных заказов</div>';
-return;
-}
-currentEntries.forEach((entry, index) => {
-const orderNumber = index + 1;
-const user = allUsers[entry.userId];
-const userName = user ? escapeHtml(user.username) : 'Unknown';
-const isPaid = entry.paid === true;
-const isEdited = entry.edited === true;
-let details = [];
-if (entry.nabor > 0) details.push(`Набор — ${entry.nabor}`);
-if (entry.print > 0) details.push(`Распечатка — ${entry.print}`);
-if (entry.photo > 0) details.push(`Фото — ${entry.photo}`);
-const detailsStr = details.length > 0 ? details.join('<br>') : '—';
-const formattedPrice = Number(entry.total).toLocaleString('ru-RU');
-let statusClass = ''; let statusText = '';
-if (isPaid) { statusClass = 'paid'; statusText = ''; }
-else if (isEdited) { statusClass = 'edited'; statusText = 'ИЗМЕНЕНО'; }
-else { statusClass = 'unpaid'; statusText = 'К ОПЛАТЕ'; }
-const card = document.createElement('div');
-card.className = `tablet-card ${statusClass}`;
-card.innerHTML = `
-<div class="tablet-card-number">${orderNumber}</div>
-<div class="tablet-card-user">${userName}</div>
-<div class="tablet-card-details">${detailsStr}</div>
-<div class="tablet-card-total">К ОПЛАТЕ</div>
-<div class="tablet-card-price">${formattedPrice} ₸</div>
-<div class="tablet-card-status status-${statusClass}">${statusText}</div>
-`;
-grid.appendChild(card);
-});
-setTimeout(() => {
-const tabletMode = document.getElementById('tablet-mode');
-tabletMode.scrollTop = tabletMode.scrollHeight;
-}, 100);
+    const currentEntries = allEntries.filter(e => e.isoDate && e.isoDate.startsWith(currentMonthString));
+    currentEntries.sort((a, b) => a.timestamp - b.timestamp);
+    
+    if (currentEntries.length === 0) {
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--dark); font-size: 20px; margin-top: 50px; opacity: 0.5;">Нет активных заказов</div>';
+        return;
+    }
+    
+    currentEntries.forEach((entry, index) => {
+        const orderNumber = index + 1;
+        const user = allUsers[entry.userId];
+        const userName = user ? escapeHtml(user.username) : 'Unknown';
+        const isPaid = entry.paid === true;
+        const isEdited = entry.edited === true;
+        
+        let details = [];
+        if (entry.nabor > 0) details.push(`Набор — ${entry.nabor}`);
+        if (entry.print > 0) details.push(`Распечатка — ${entry.print}`);
+        if (entry.photo > 0) details.push(`Фото — ${entry.photo}`);
+        const detailsStr = details.length > 0 ? details.join('<br>') : '—';
+        
+        const formattedPrice = Number(entry.total).toLocaleString('ru-RU');
+        
+        let statusClass = ''; 
+        let statusText = '';
+        if (isPaid) { statusClass = 'paid'; statusText = ''; }
+        else if (isEdited) { statusClass = 'edited'; statusText = 'ИЗМЕНЕНО'; }
+        else { statusClass = 'unpaid'; statusText = 'К ОПЛАТЕ'; }
+        
+        const card = document.createElement('div');
+        card.className = `tablet-card ${statusClass}`;
+        card.innerHTML = `
+            <div class="tablet-card-number">${orderNumber}</div>
+            <div class="tablet-card-user">${userName}</div>
+            <div class="tablet-card-details">${detailsStr}</div>
+            <div class="tablet-card-total">К ОПЛАТЕ</div>
+            <div class="tablet-card-price">${formattedPrice} ₸</div>
+            <div class="tablet-card-status status-${statusClass}">${statusText}</div>
+        `;
+        grid.appendChild(card);
+    });
+    
+    // ✅ Прокрутка вниз только при добавлении нового заказа
+    if (currentEntries.length > lastTabletEntriesCount) {
+        setTimeout(() => {
+            const tabletMode = document.getElementById('tablet-mode');
+            if (tabletMode) {
+                tabletMode.scrollTop = tabletMode.scrollHeight;
+            }
+        }, 100);
+    }
+    lastTabletEntriesCount = currentEntries.length;
 }
 function secureAction(actionType) {
 if (currentUser.role !== 'admin') {
@@ -2023,6 +2045,9 @@ saveEntry();
 closeModal('modal-entry');
 }
 });
+
+
 </script>
+<script src="animations.js"></script>
 </body>
 </html>
