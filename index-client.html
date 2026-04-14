@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <link rel="icon" href="image.ico">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BilliardClub — Бронирование столов</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
+    <style>
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; }
+        body { background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%); color: #e0e0e0; min-height: 100vh; }
+        .glass {
+            background: rgba(26, 26, 46, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            border-radius: 16px;
+        }
+        .table-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid rgba(59, 130, 246, 0.2);
+        }
+        .table-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(59, 130, 246, 0.5);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.2);
+        }
+        .table-free { border-color: rgba(34, 197, 94, 0.4); }
+        .table-free:hover { border-color: rgba(34, 197, 94, 0.7); box-shadow: 0 10px 30px rgba(34, 197, 94, 0.2); }
+        .table-busy { border-color: rgba(239, 68, 68, 0.3); opacity: 0.7; }
+        .table-booked { border-color: rgba(234, 179, 8, 0.4); }
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 12px; border-radius: 9999px;
+            font-size: 12px; font-weight: 600;
+        }
+        .status-free { background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .status-busy { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .status-booked { background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3); }
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            transition: all 0.2s ease;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        }
+        .modal-overlay { animation: fadeIn 0.25s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal-content { animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes slideUp { from { transform: translateY(30px) scale(0.98); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+        input, select {
+            background: rgba(30, 30, 55, 0.95);
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            color: #e0e0e0;
+            transition: all 0.2s ease;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+        }
+        .pulse-dot { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.1); } }
+        @media (max-width: 768px) {
+            .grid-cols-2, .grid-cols-3, .grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+<!-- Header -->
+<header class="glass sticky top-0 z-40 px-4 md:px-6 py-4 border-b border-blue-900/30">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">BilliardClub</h1>
+                <span class="text-xs text-gray-400">Онлайн бронирование</span>
+            </div>
+        </div>
+        <div class="text-right hidden sm:block">
+            <div id="currentDateTime" class="text-sm font-medium text-gray-200"></div>
+            <div class="text-xs text-gray-500">🕐 Работаем ежедневно 10:00-23:00</div>
+        </div>
+    </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="glass rounded-xl p-4 text-center">
+            <div class="text-3xl font-bold text-green-400" id="statFreeTables">0</div>
+            <div class="text-xs text-gray-400 mt-1">Свободно сейчас</div>
+        </div>
+        <div class="glass rounded-xl p-4 text-center">
+            <div class="text-3xl font-bold text-blue-400" id="statTotalTables">0</div>
+            <div class="text-xs text-gray-400 mt-1">Всего столов</div>
+        </div>
+        <div class="glass rounded-xl p-4 text-center">
+            <div class="text-3xl font-bold text-yellow-400" id="statPriceFrom">0 ₸</div>
+            <div class="text-xs text-gray-400 mt-1">Цена от</div>
+        </div>
+        <div class="glass rounded-xl p-4 text-center">
+            <div class="text-3xl font-bold text-purple-400">24/7</div>
+            <div class="text-xs text-gray-400 mt-1">Режим работы</div>
+        </div>
+    </div>
+
+    <!-- Current Tariffs -->
+    <div class="glass rounded-xl p-5 mb-6">
+        <h3 class="font-semibold text-lg mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            📋 Текущие тарифы
+        </h3>
+        <div id="tariffsList" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <!-- Tariffs will be rendered here -->
+        </div>
+    </div>
+
+    <!-- Tables Grid -->
+    <div class="mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold">🎱 Наши столы</h2>
+            <div class="flex gap-2">
+                <button onclick="filterTables('all')" class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white" id="filterAll">Все</button>
+                <button onclick="filterTables('free')" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 text-gray-400 hover:bg-gray-700" id="filterFree">Свободные</button>
+            </div>
+        </div>
+        <div id="tablesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Tables will be rendered here -->
+        </div>
+    </div>
+
+    <!-- How to Book -->
+    <div class="glass rounded-xl p-5">
+        <h3 class="font-semibold text-lg mb-3">📝 Как забронировать?</h3>
+        <ol class="space-y-2 text-sm text-gray-300">
+            <li class="flex items-start gap-2"><span class="text-blue-400 font-bold">1.</span> Выберите свободный стол</li>
+            <li class="flex items-start gap-2"><span class="text-blue-400 font-bold">2.</span> Укажите дату, время и длительность</li>
+            <li class="flex items-start gap-2"><span class="text-blue-400 font-bold">3.</span> Оставьте контактные данные</li>
+            <li class="flex items-start gap-2"><span class="text-blue-400 font-bold">4.</span> Дождитесь подтверждения (мы перезвоним)</li>
+        </ol>
+    </div>
+</main>
+
+<!-- Booking Modal -->
+<div id="bookingModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 modal-overlay p-4">
+    <div class="glass rounded-2xl p-6 w-full max-w-lg modal-content max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-5">
+            <h3 class="font-bold text-xl">📅 Бронирование стола</h3>
+            <button onclick="closeBookingModal()" class="text-gray-400 hover:text-white transition p-1 hover:bg-gray-800 rounded-lg">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div class="space-y-4">
+            <div class="bg-blue-900/20 border border-blue-800/50 rounded-xl p-3">
+                <div class="text-sm text-blue-300" id="bookingTableName">Стол 1</div>
+                <div class="text-xs text-gray-400 mt-1" id="bookingTablePrice">500 ₸/час</div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Дата *</label>
+                    <input type="date" id="bookingDate" class="w-full rounded-lg px-3 py-2.5" required>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Время *</label>
+                    <input type="time" id="bookingTime" class="w-full rounded-lg px-3 py-2.5" required>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Длительность (часов) *</label>
+                <select id="bookingDuration" class="w-full rounded-lg px-3 py-2.5" onchange="calculateBookingPrice()">
+                    <option value="1">1 час</option>
+                    <option value="2" selected>2 часа</option>
+                    <option value="3">3 часа</option>
+                    <option value="4">4 часа</option>
+                    <option value="5">5 часов</option>
+                    <option value="6">6+ часов</option>
+                    <option value="unlimited">♾ Без ограничений (оплата по факту)</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Ваше имя *</label>
+                    <input type="text" id="clientName" class="w-full rounded-lg px-3 py-2.5" placeholder="Иван Иванов" required>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Телефон *</label>
+                    <input type="tel" id="clientPhone" class="w-full rounded-lg px-3 py-2.5" placeholder="+7 (999) 123-45-67" required>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Комментарий (опционально)</label>
+                <textarea id="bookingComment" class="w-full rounded-lg px-3 py-2.5 h-20" placeholder="Особые пожелания..."></textarea>
+            </div>
+            <div class="bg-gray-800/50 rounded-xl p-4">
+                <div class="flex justify-between items-center text-lg font-bold">
+                    <span class="text-gray-400">Примерная стоимость:</span>
+                    <span class="text-green-400" id="bookingTotalPrice">0 ₸</span>
+                </div>
+                <div class="text-xs text-gray-500 mt-1">* Окончательная цена может отличаться</div>
+            </div>
+        </div>
+        <div class="mt-6 flex gap-3 pt-4 border-t border-gray-800">
+            <button onclick="closeBookingModal()" class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-medium transition">Отмена</button>
+            <button onclick="submitBooking()" class="flex-1 py-3 btn-success rounded-lg text-sm font-medium transition">Забронировать</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Storage keys (same as admin/cashier)
+const STORAGE_KEYS = {
+    TABLES: 'bc_tables_v2',
+    SESSIONS: 'bc_sessions_v2',
+    BOOKINGS: 'bc_bookings_v2',
+    SETTINGS: 'bc_settings_v2',
+    TARIFFS: 'bc_tariffs_v2'
+};
+
+function loadData(key, def = null) {
+    try { return localStorage.getItem(key) ? JSON.parse(localStorage.getItem(key)) : def; }
+    catch(e) { return def; }
+}
+
+let tables = loadData(STORAGE_KEYS.TABLES, []);
+let sessions = loadData(STORAGE_KEYS.SESSIONS, []);
+let bookings = loadData(STORAGE_KEYS.BOOKINGS, []);
+let settings = loadData(STORAGE_KEYS.SETTINGS, { pricePerHour: 500, minTimeMinutes: 30 });
+let tariffs = loadData(STORAGE_KEYS.TARIFFS, []);
+let currentFilter = 'all';
+let selectedTableId = null;
+
+function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 9); }
+function formatCurrency(a) { return new Intl.NumberFormat('ru-RU').format(a) + ' ₸'; }
+function formatTime(d) { return d ? new Date(d).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'}) : '—'; }
+function formatDate(d) { return d ? new Date(d).toLocaleDateString('ru-RU') : '—'; }
+
+function showNotification(msg, type='info') {
+    const c = document.createElement('div');
+    c.className = `fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-2xl text-sm ${type==='error'?'bg-red-600':type==='success'?'bg-green-600':'bg-blue-600'} text-white`;
+    c.textContent = msg;
+    document.body.appendChild(c);
+    setTimeout(() => { c.style.opacity='0'; setTimeout(()=>c.remove(),300); }, 3000);
+}
+
+function getTablePrice(table) {
+    return (table.pricingMode==='custom' && table.customPrice) ? table.customPrice : settings.pricePerHour;
+}
+
+function isTableBusy(tableId) {
+    const now = new Date();
+    return sessions.some(s => s.tableId === tableId && s.status === 'active');
+}
+
+function isTableBooked(tableId, date = new Date().toISOString().split('T')[0]) {
+    return bookings.some(b => 
+        b.tableId === tableId && 
+        b.date === date && 
+        b.status === 'confirmed' &&
+        (!b.endTime || new Date(b.endTime) > new Date())
+    );
+}
+
+function renderTariffs() {
+    const container = document.getElementById('tariffsList');
+    if (!container) return;
+    
+    if (tariffs.length === 0) {
+        container.innerHTML = `<div class="tariff-card col-span-full"><div class="text-sm">💰 Стандартный тариф: <strong>${formatCurrency(settings.pricePerHour)}/час</strong></div></div>`;
+        return;
+    }
+    
+    container.innerHTML = tariffs.map(t => `
+        <div class="tariff-card bg-blue-900/20 border border-blue-800/50 rounded-xl p-3">
+            <div class="flex justify-between items-center mb-1">
+                <span class="font-semibold text-sm">${t.name}</span>
+                <span class="text-blue-400 font-bold">${formatCurrency(t.price)}</span>
+            </div>
+            <div class="text-xs text-gray-400">🕐 ${t.start} - ${t.end}</div>
+        </div>
+    `).join('');
+}
+
+function renderTables() {
+    const grid = document.getElementById('tablesGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    
+    if (tables.length === 0) {
+        grid.innerHTML = '<div class="col-span-full text-center text-gray-500 py-8">Столы пока не добавлены</div>';
+        updateStats(); 
+        return;
+    }
+    
+    const filtered = currentFilter === 'free' ? tables.filter(t => !isTableBusy(t.id) && !isTableBooked(t.id)) : tables;
+    
+    filtered.forEach(t => {
+        const busy = isTableBusy(t.id);
+        const booked = isTableBooked(t.id);
+        const price = getTablePrice(t);
+        
+        const card = document.createElement('div');
+        card.className = `table-card glass rounded-xl p-5 ${busy ? 'table-busy' : (booked ? 'table-booked' : 'table-free')}`;
+        
+        let statusHtml = '';
+        if(busy) {
+            statusHtml = '<span class="status-badge status-busy"><span class="w-2 h-2 rounded-full bg-red-500 pulse-dot"></span>Занят</span>';
+        } else if(booked) {
+            statusHtml = '<span class="status-badge status-booked"><span class="w-2 h-2 rounded-full bg-yellow-500 pulse-dot"></span>Забронирован</span>';
+        } else {
+            statusHtml = '<span class="status-badge status-free"><span class="w-2 h-2 rounded-full bg-green-500"></span>Свободен</span>';
+        }
+        
+        card.innerHTML = `
+            <div class="flex justify-between items-start mb-3">
+                <div>
+                    <h4 class="font-semibold text-lg">${t.name}</h4>
+                    <div class="text-xs text-gray-400 mt-0.5">${t.type || 'Стандартный'}</div>
+                </div>
+                ${statusHtml}
+            </div>
+            <div class="flex items-center justify-between mb-4">
+                <div class="text-2xl font-bold text-blue-400">${formatCurrency(price)}<span class="text-sm text-gray-400 font-normal">/час</span></div>
+            </div>
+            ${busy ? `
+                <div class="text-sm text-gray-500 bg-gray-900/50 rounded-lg p-3">
+                    ⏳ Стол занят. Освободится примерно через 30 мин
+                </div>
+            ` : booked ? `
+                <div class="text-sm text-yellow-600 bg-yellow-900/20 rounded-lg p-3">
+                    📋 Стол забронирован на сегодня
+                </div>
+            ` : `
+                <button onclick="openBookingModal('${t.id}')" class="w-full py-3 btn-primary rounded-lg text-sm font-medium transition flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    Забронировать
+                </button>
+            `}
+        `;
+        grid.appendChild(card);
+    });
+    
+    updateStats();
+}
+
+function updateStats() {
+    const free = tables.filter(t => !isTableBusy(t.id) && !isTableBooked(t.id)).length;
+    const prices = tables.map(t => getTablePrice(t));
+    const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+    
+    document.getElementById('statFreeTables').textContent = free;
+    document.getElementById('statTotalTables').textContent = tables.length;
+    document.getElementById('statPriceFrom').textContent = formatCurrency(minPrice);
+}
+
+function filterTables(type) {
+    currentFilter = type;
+    document.getElementById('filterAll').className = type === 'all' ? 'px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white' : 'px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 text-gray-400 hover:bg-gray-700';
+    document.getElementById('filterFree').className = type === 'free' ? 'px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white' : 'px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 text-gray-400 hover:bg-gray-700';
+    renderTables();
+}
+
+function openBookingModal(tableId) {
+    selectedTableId = tableId;
+    const table = tables.find(t => t.id === tableId);
+    if (!table) return;
+    
+    document.getElementById('bookingTableName').textContent = table.name;
+    document.getElementById('bookingTablePrice').textContent = `${formatCurrency(getTablePrice(table))}/час`;
+    document.getElementById('bookingDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('bookingTime').value = new Date().toTimeString().slice(0,5);
+    document.getElementById('bookingDuration').value = '2';
+    document.getElementById('clientName').value = '';
+    document.getElementById('clientPhone').value = '';
+    document.getElementById('bookingComment').value = '';
+    
+    calculateBookingPrice();
+    document.getElementById('bookingModal').classList.remove('hidden');
+}
+
+function closeBookingModal() {
+    document.getElementById('bookingModal').classList.add('hidden');
+    selectedTableId = null;
+}
+
+function calculateBookingPrice() {
+    const table = tables.find(t => t.id === selectedTableId);
+    if (!table) return;
+    
+    const duration = document.getElementById('bookingDuration').value;
+    const isUnlimited = duration === 'unlimited';
+    const price = getTablePrice(table);
+    
+    if (isUnlimited) {
+        document.getElementById('bookingTotalPrice').textContent = 'По факту';
+    } else {
+        const total = price * parseInt(duration);
+        document.getElementById('bookingTotalPrice').textContent = formatCurrency(total);
+    }
+}
+
+function submitBooking() {
+    const table = tables.find(t => t.id === selectedTableId);
+    if (!table) { 
+        showNotification('Ошибка: стол не найден', 'error'); 
+        return; 
+    }
+    
+    const date = document.getElementById('bookingDate').value;
+    const time = document.getElementById('bookingTime').value;
+    const duration = document.getElementById('bookingDuration').value;
+    const isUnlimited = duration === 'unlimited';
+    const name = document.getElementById('clientName').value.trim();
+    const phone = document.getElementById('clientPhone').value.trim();
+    const comment = document.getElementById('bookingComment').value.trim();
+    
+    if (!date || !time || !name || !phone) {
+        showNotification('Заполните все обязательные поля', 'error');
+        return;
+    }
+    
+    // Check for conflicts
+    const hasConflict = bookings.some(b => 
+        b.tableId === selectedTableId && 
+        b.date === date && 
+        b.time === time &&
+        b.status !== 'cancelled'
+    );
+    
+    if (hasConflict) {
+        showNotification('❌ Этот стол уже забронирован на выбранное время', 'error');
+        return;
+    }
+    
+    const booking = {
+        id: generateId(),
+        tableId: selectedTableId,
+        tableName: table.name,
+        clientName: name,
+        clientPhone: phone,
+        date, 
+        time, 
+        duration: isUnlimited ? 'unlimited' : parseInt(duration),
+        comment,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        estimatedPrice: isUnlimited ? 0 : (getTablePrice(table) * parseInt(duration)),
+        isUnlimited
+    };
+    
+    bookings.push(booking);
+    localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
+    
+    closeBookingModal();
+    renderTables();
+    
+    showNotification('✅ Бронь создана! Мы перезвоним вам для подтверждения', 'success');
+}
+
+function updateDateTime() {
+    const now = new Date();
+    const el = document.getElementById('currentDateTime');
+    if(el) {
+        el.textContent = now.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'})+' '+now.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+    }
+}
+
+function init() {
+    updateDateTime();
+    setInterval(updateDateTime, 1000);
+    
+    // Create default tables if empty
+    if (tables.length === 0) {
+        for(let i=1; i<=6; i++) {
+            tables.push({
+                id: generateId(),
+                name: `Стол ${i}`,
+                type: 'Стандартный',
+                pricingMode: 'global',
+                pricePerHour: 500
+            });
+        }
+        localStorage.setItem(STORAGE_KEYS.TABLES, JSON.stringify(tables));
+    }
+    
+    renderTariffs();
+    renderTables();
+    
+    // Auto-refresh every 30 seconds
+    setInterval(() => {
+        if(document.visibilityState === 'visible') {
+            sessions = loadData(STORAGE_KEYS.SESSIONS, []);
+            bookings = loadData(STORAGE_KEYS.BOOKINGS, []);
+            renderTables();
+        }
+    }, 30000);
+    
+    // Listen for changes from other tabs
+    window.addEventListener('storage', (e) => {
+        if(e.key === STORAGE_KEYS.SESSIONS || e.key === STORAGE_KEYS.BOOKINGS) {
+            sessions = loadData(STORAGE_KEYS.SESSIONS, []);
+            bookings = loadData(STORAGE_KEYS.BOOKINGS, []);
+            renderTables();
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>

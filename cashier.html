@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<link rel="icon" href="image_kassa.ico">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Терминал кассира - BilliardClub Cashier</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
+<style>
+* { font-family: 'Inter', sans-serif; box-sizing: border-box; }
+body { background: #0a0a1a; color: #e0e0e0; min-height: 100vh; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #1a1a2e; }
+::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #2563eb; }
+.neon-glow-green { box-shadow: 0 0 15px rgba(34, 197, 94, 0.3), 0 0 30px rgba(34, 197, 94, 0.1); }
+.glass {
+  background: rgba(26, 26, 46, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 12px;
+}
+.glass-card {
+  background: rgba(30, 30, 55, 0.9);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  transition: all 0.25s ease;
+}
+.glass-card:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+  transform: translateY(-1px);
+}
+.tab-btn { transition: all 0.2s ease; }
+.tab-btn.active {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
+}
+.tab-btn:not(.active):hover {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+}
+.table-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.table-card:hover { transform: translateY(-3px); }
+.table-active {
+  border-color: #22c55e !important;
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.3), 0 8px 25px rgba(34, 197, 94, 0.15);
+}
+.table-inactive { border-color: rgba(59, 130, 246, 0.2); }
+.table-booked { border-color: #a855f7 !important; background: rgba(168, 85, 247, 0.1); }
+.pulse-dot { animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.1); } }
+.modal-overlay { animation: fadeIn 0.25s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal-content { animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes slideUp { from { transform: translateY(30px) scale(0.98); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+input, select, textarea {
+  background: rgba(30, 30, 55, 0.95);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  color: #e0e0e0;
+  transition: all 0.2s ease;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+input::placeholder { color: #6b7280; }
+.stat-card { transition: all 0.3s ease; }
+.stat-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3); }
+.bar-bg { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: -1; pointer-events: none; }
+.bar-bg img { width: 100%; height: 100%; object-fit: cover; opacity: 0.06; filter: blur(1px); }
+.notification {
+  animation: slideInRight 0.3s ease, fadeOut 0.3s ease 2.7s forwards;
+  max-width: 380px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+@keyframes slideInRight { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes fadeOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(20px); } }
+@media print {
+  body { background: white !important; color: black !important; font-size: 11pt; }
+  .no-print { display: none !important; }
+  .glass, .glass-card { background: white !important; border: 1px solid #ccc !important; box-shadow: none !important; color: black !important; }
+  .text-gray-400, .text-gray-500 { color: #4b5563 !important; }
+  .text-green-400 { color: #16a34a !important; }
+  .text-blue-400 { color: #2563eb !important; }
+  .text-purple-400 { color: #9333ea !important; }
+  .text-yellow-400 { color: #ca8a04 !important; }
+  header { position: static; background: white !important; border-bottom: 2px solid #3b82f6; }
+  #tab-shop { display: block !important; }
+}
+.btn-primary { background: linear-gradient(135deg, #3b82f6, #2563eb); transition: all 0.2s ease; }
+.btn-primary:hover { background: linear-gradient(135deg, #2563eb, #1d4ed8); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4); }
+.btn-success { background: linear-gradient(135deg, #22c55e, #16a34a); transition: all 0.2s ease; }
+.btn-success:hover { background: linear-gradient(135deg, #16a34a, #15803d); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(22, 163, 74, 0.4); }
+.btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); transition: all 0.2s ease; }
+.btn-danger:hover { background: linear-gradient(135deg, #dc2626, #b91c1c); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4); }
+.btn-secondary { background: rgba(55, 65, 81, 0.9); border: 1px solid rgba(75, 85, 99, 0.5); transition: all 0.2s ease; }
+.btn-secondary:hover { background: rgba(75, 85, 99, 0.95); border-color: rgba(100, 116, 139, 0.7); }
+.quantity-btn {
+  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; font-weight: 500; transition: all 0.15s ease;
+}
+.quantity-btn:hover { background: rgba(59, 130, 246, 0.2); }
+.quantity-btn:active { transform: scale(0.95); }
+.receipt-print {
+  font-family: 'Courier New', monospace; background: white; color: black; padding: 20px;
+  max-width: 320px; margin: 0 auto; border: 1px dashed #666;
+}
+.receipt-print .header { text-align: center; border-bottom: 1px dashed #666; padding-bottom: 10px; margin-bottom: 10px; }
+.receipt-print .item { display: flex; justify-content: space-between; margin: 4px 0; font-size: 12pt; }
+.receipt-print .total { border-top: 1px dashed #666; padding-top: 10px; margin-top: 10px; font-weight: bold; font-size: 14pt; }
+.receipt-print .footer { text-align: center; margin-top: 15px; font-size: 10pt; color: #666; }
+@media (max-width: 768px) {
+  .grid-cols-2, .grid-cols-3, .grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
+}
+</style>
+</head>
+<body class="antialiased">
+<div class="bar-bg no-print">
+  <img src="https://image.qwenlm.ai/public_source/847d2382-9518-46d1-85cb-5fcbdff45d5d/1d9970d0f-4369-435f-8e5b-f99b410ae9a7.png" alt="background">
+</div>
+
+<div id="notifications" class="fixed top-4 right-4 z-50 space-y-3"></div>
+
+<header class="glass sticky top-0 z-40 px-4 md:px-6 py-3 md:py-4 no-print border-b border-blue-900/30">
+  <div class="max-w-7xl mx-auto flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+      </div>
+      <div>
+        <h1 class="text-lg md:text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">BilliardClub Cashier</h1>
+        <span class="text-xs text-gray-500">Кассовый терминал</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 md:gap-4">
+      <div class="text-right hidden sm:block">
+        <div id="currentDateTime" class="text-sm font-medium text-gray-200"></div>
+        <div id="currentShift" class="text-xs text-gray-500">Смена закрыта</div>
+      </div>
+      <button onclick="openShiftModal()" class="px-3 md:px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg text-xs md:text-sm font-medium hover:opacity-95 transition shadow-lg shadow-green-500/20 flex items-center gap-1.5">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <span class="hidden md:inline">Смена</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="max-w-7xl mx-auto px-4 md:px-6 pt-4 pb-2 no-print">
+  <div class="flex gap-2 overflow-x-auto pb-1">
+    <button class="tab-btn active px-5 py-2.5 rounded-xl text-sm font-medium transition" data-tab="tables" onclick="switchTab('tables')">🎱 Столы</button>
+    <button class="tab-btn px-5 py-2.5 rounded-xl text-sm font-medium transition bg-gray-800/70 text-gray-400 hover:bg-gray-700/70 whitespace-nowrap" data-tab="shop" onclick="switchTab('shop')">🛒 Магазин</button>
+    <button class="tab-btn px-5 py-2.5 rounded-xl text-sm font-medium transition bg-gray-800/70 text-gray-400 hover:bg-gray-700/70 whitespace-nowrap" data-tab="bookings" onclick="switchTab('bookings')">📋 Бронирования</button>
+  </div>
+</div>
+
+<main class="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-6">
+  <!-- TAB: Tables -->
+  <div id="tab-tables" class="tab-content">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-5 md:mb-6">
+      <div class="glass rounded-xl p-4 stat-card"><div class="text-xs text-gray-400 mb-1">Активных столов</div><div class="text-2xl font-bold text-green-400" id="statActiveTables">0</div></div>
+      <div class="glass rounded-xl p-4 stat-card"><div class="text-xs text-gray-400 mb-1">Выручка сегодня</div><div class="text-2xl font-bold text-blue-400" id="statTodayRevenue">0 ₸</div></div>
+      <div class="glass rounded-xl p-4 stat-card"><div class="text-xs text-gray-400 mb-1">Сессий сегодня</div><div class="text-2xl font-bold text-purple-400" id="statTodaySessions">0</div></div>
+      <div class="glass rounded-xl p-4 stat-card"><div class="text-xs text-gray-400 mb-1">Средний чек</div><div class="text-2xl font-bold text-yellow-400" id="statAvgCheck">0 ₸</div></div>
+    </div>
+    <div id="tablesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+  </div>
+
+  <!-- TAB: Shop -->
+  <div id="tab-shop" class="tab-content hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6">
+      <div class="lg:col-span-2">
+        <div class="glass rounded-xl p-4 mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <h3 class="font-semibold text-base">Меню бара</h3>
+          <div class="flex gap-2 w-full sm:w-auto">
+            <select id="menuCategoryFilter" class="rounded-lg px-3 py-2 text-sm flex-1 sm:flex-initial" onchange="renderBarMenu()">
+              <option value="all">Все категории</option><option value="drinks">🍺 Напитки</option><option value="food">🍕 Еда</option><option value="snacks">🥜 Закуски</option><option value="other">📦 Другое</option>
+            </select>
+            <button onclick="openAddMenuItemModal()" class="px-3 py-2 btn-primary rounded-lg text-xs font-medium whitespace-nowrap">+ Товар</button>
+          </div>
+        </div>
+        <div id="barMenuGrid" class="grid grid-cols-2 md:grid-cols-3 gap-3"></div>
+      </div>
+      <div>
+        <div class="glass rounded-xl p-4 sticky top-20">
+          <h3 class="font-semibold mb-3 flex items-center gap-2">
+            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+            🧾 Текущий заказ
+          </h3>
+          <div class="mb-3">
+            <label for="orderTableSelect" class="block text-xs text-gray-400 mb-1">Привязать к столу</label>
+            <select id="orderTableSelect" class="w-full rounded-lg px-3 py-2 text-sm" onchange="updateOrderTableInfo()">
+              <option value="">— Без стола (розничная продажа) —</option>
+            </select>
+            <div id="orderTableInfo" class="text-xs text-gray-500 mt-1 min-h-[16px]"></div>
+          </div>
+          <div id="orderItems" class="space-y-2 mb-4 max-h-64 overflow-y-auto pr-1">
+            <div class="text-sm text-gray-500 text-center py-6">Добавьте товары из меню</div>
+          </div>
+          <div class="border-t border-gray-700 pt-3 space-y-2">
+            <div class="flex justify-between text-sm"><span class="text-gray-400">Товары:</span><span id="orderSubtotal">0 ₸</span></div>
+            <div class="flex justify-between text-sm"><span class="text-gray-400">Скидка:</span><span id="orderDiscount">0 ₸</span></div>
+            <div class="flex justify-between text-lg font-bold text-green-400 pt-2 border-t border-gray-700"><span>Итого:</span><span id="orderTotal">0 ₸</span></div>
+          </div>
+          <div class="mt-4 space-y-2">
+            <div class="flex gap-2">
+              <input type="number" id="orderDiscountInput" placeholder="Скидка (₸)" class="flex-1 rounded-lg px-3 py-2 text-sm" min="0" value="0">
+              <button onclick="applyDiscount()" class="px-3 py-2 btn-secondary rounded-lg text-xs">Применить</button>
+            </div>
+            <button onclick="completeBarOrder()" class="w-full py-2.5 btn-success rounded-lg text-sm font-medium flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              Оплатить заказ
+            </button>
+            <button onclick="clearOrder()" class="w-full py-2 btn-secondary rounded-lg text-sm">Очистить заказ</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="glass rounded-xl mt-6 overflow-hidden">
+      <div class="p-4 border-b border-gray-800 flex justify-between items-center">
+        <h3 class="font-semibold text-base">История продаж бара</h3>
+        <span class="text-xs text-gray-500">Последние 50</span>
+      </div>
+      <div class="overflow-x-auto max-h-72">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-900/60 text-gray-400 text-left text-xs uppercase tracking-wider">
+              <th class="px-4 py-3 font-medium">Время</th><th class="px-4 py-3 font-medium">Стол</th><th class="px-4 py-3 font-medium">Товары</th><th class="px-4 py-3 font-medium text-right">Сумма</th><th class="px-4 py-3 font-medium text-center">Продавец</th>
+            </tr>
+          </thead>
+          <tbody id="barSalesHistory"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: Bookings -->
+  <div id="tab-bookings" class="tab-content hidden">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="glass rounded-xl p-4">
+        <div class="text-xs text-gray-400 mb-1">Новые заявки</div>
+        <div class="text-2xl font-bold text-yellow-400" id="bookingPendingCount">0</div>
+      </div>
+      <div class="glass rounded-xl p-4">
+        <div class="text-xs text-gray-400 mb-1">Подтверждено</div>
+        <div class="text-2xl font-bold text-green-400" id="bookingConfirmedCount">0</div>
+      </div>
+      <div class="glass rounded-xl p-4">
+        <div class="text-xs text-gray-400 mb-1">Сегодня</div>
+        <div class="text-2xl font-bold text-blue-400" id="bookingTodayCount">0</div>
+      </div>
+      <div class="glass rounded-xl p-4">
+        <div class="text-xs text-gray-400 mb-1">Выручка от броней</div>
+        <div class="text-2xl font-bold text-purple-400" id="bookingRevenueCount">0 ₸</div>
+      </div>
+    </div>
+    <div class="glass rounded-xl overflow-hidden">
+      <div class="p-4 border-b border-gray-800 flex justify-between items-center">
+        <h3 class="font-semibold text-base">📋 Заявки на бронирование</h3>
+        <div class="flex gap-2">
+          <button onclick="renderBookings('all')" class="px-3 py-1.5 text-xs rounded-lg bg-blue-600 text-white">Все</button>
+          <button onclick="renderBookings('pending')" class="px-3 py-1.5 text-xs rounded-lg bg-gray-700 text-gray-300">Ожидают</button>
+          <button onclick="renderBookings('confirmed')" class="px-3 py-1.5 text-xs rounded-lg bg-gray-700 text-gray-300">Подтверждено</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-900/60 text-gray-400 text-left text-xs uppercase">
+              <th class="px-4 py-3">Дата/Время</th><th class="px-4 py-3">Стол</th><th class="px-4 py-3">Клиент</th><th class="px-4 py-3">Телефон</th><th class="px-4 py-3">Длительность</th><th class="px-4 py-3">Цена</th><th class="px-4 py-3">Статус</th><th class="px-4 py-3 text-center">Действия</th>
+            </tr>
+          </thead>
+          <tbody id="bookingsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- MODALS -->
+<div id="sessionModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 modal-overlay no-print p-4">
+  <div class="glass rounded-2xl p-5 md:p-6 w-full max-w-md modal-content">
+    <div class="flex justify-between items-center mb-5">
+      <h3 class="font-semibold text-lg">Начать сессию</h3>
+      <button onclick="closeSessionModal()" class="text-gray-400 hover:text-white transition p-1 hover:bg-gray-800 rounded-lg">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+    </div>
+    <div class="space-y-4">
+      <div><label class="block text-sm text-gray-400 mb-1">Столы</label><input type="text" id="sessionTableName" class="w-full rounded-lg px-3 py-2.5 bg-gray-800 cursor-not-allowed" readonly><input type="hidden" id="sessionTableId"></div>
+      <div><label class="block text-sm text-gray-400 mb-1">Имя клиента (опционально)</label><input type="text" id="sessionClientName" class="w-full rounded-lg px-3 py-2.5" placeholder="Имя клиента"></div>
+      <div class="bg-blue-900/20 border border-blue-800/50 rounded-lg p-3">
+        <div class="text-xs text-blue-300 flex items-start gap-2">
+          <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span>Цена рассчитывается автоматически по тарифу стола и времени начала</span>
+        </div>
+      </div>
+    </div>
+    <div class="mt-6 flex gap-3 pt-4 border-t border-gray-800">
+      <button onclick="closeSessionModal()" class="flex-1 py-2.5 btn-secondary rounded-lg text-sm font-medium">Отмена</button>
+      <button onclick="startSession()" class="flex-1 py-2.5 btn-success rounded-lg text-sm font-medium">Начать сессию</button>
+    </div>
+  </div>
+</div>
+
+<div id="payModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 modal-overlay no-print p-4">
+  <div class="glass rounded-2xl p-6 w-full max-w-2xl modal-content border border-gray-700 shadow-2xl">
+    <div class="flex justify-between items-center mb-5">
+      <h3 class="font-bold text-xl flex items-center gap-2 text-white">💳 Оплата сессии</h3>
+      <button onclick="closePayModal()" class="text-gray-400 hover:text-white transition p-1 hover:bg-gray-700 rounded-lg">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="space-y-4">
+        <div class="bg-gray-800/50 rounded-xl p-3 flex justify-between items-center border border-gray-700/50"><span class="text-gray-400 text-sm">Стол</span><span class="font-bold text-lg text-white" id="payTableName">—</span></div>
+        <div class="bg-gray-800/50 rounded-xl p-3 flex justify-between items-center border border-gray-700/50"><span class="text-gray-400 text-sm">Длительность</span><span class="font-mono text-blue-400 font-semibold" id="payDuration">—</span></div>
+        <div class="bg-gray-800/50 rounded-xl p-3 flex justify-between items-center border border-gray-700/50"><span class="text-gray-400 text-sm">Начало</span><span class="text-gray-300 text-sm" id="payStartTime">—</span></div>
+        <div class="bg-gray-800/30 rounded-xl p-3 border border-gray-700/50">
+          <div class="text-xs text-gray-500 mb-2 uppercase tracking-wide font-semibold">Детализация</div>
+          <div class="space-y-2 text-sm" id="payCalculation"></div>
+        </div>
+      </div>
+      <div class="flex flex-col justify-between space-y-4">
+        <div class="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-600 rounded-xl p-5 text-center shadow-lg">
+          <div class="text-sm text-gray-400 mb-1">К оплате</div>
+          <div class="text-4xl font-bold text-green-400 tracking-tight" id="payTotal">0 ₸</div>
+        </div>
+        <div class="bg-gray-800/50 rounded-xl p-3 border border-gray-700/50">
+          <div class="flex justify-between items-center mb-2"><span class="text-xs text-gray-400 font-medium">🙌 Обслуживание</span><span class="text-[10px] text-gray-500">Необязательно</span></div>
+          <input type="number" id="payServiceFee" class="w-full rounded-lg px-3 py-2 text-sm bg-gray-900 border border-gray-600 focus:border-green-500 outline-none transition text-center font-mono" value="0" min="0" placeholder="0" oninput="updatePayTotal()">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1 ml-1">Способ оплаты</label>
+          <select id="payMethod" class="w-full rounded-xl px-3 py-3 bg-gray-800 border border-gray-600 focus:border-blue-500 outline-none transition text-sm font-medium">
+            <option value="cash">💵 Наличные</option><option value="card">💳 Карта</option><option value="transfer">📱 Перевод</option><option value="mix">🔄 Смешанный</option>
+          </select>
+        </div>
+        <button onclick="processPayment()" class="w-full py-3.5 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold text-base transition shadow-lg shadow-green-900/20 flex items-center justify-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+          Подтвердить оплату
+        </button>
+      </div>
+    </div>
+    <input type="hidden" id="paySessionId"><input type="hidden" id="payTableId">
+  </div>
+</div>
+
+<div id="shiftModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 modal-overlay no-print p-4">
+  <div class="glass rounded-2xl p-5 md:p-6 w-full max-w-md modal-content">
+    <div class="flex justify-between items-center mb-5">
+      <h3 class="font-semibold text-lg">Управление сменой</h3>
+      <button onclick="closeShiftModal()" class="text-gray-400 hover:text-white transition p-1 hover:bg-gray-800 rounded-lg">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+    </div>
+    <div class="space-y-4">
+      <div id="currentShiftInfo" class="bg-gray-900/60 rounded-xl p-4">
+        <div class="text-sm text-gray-400 mb-2">Текущая смена</div>
+        <div id="shiftStatus" class="text-lg font-semibold">Не открыта</div>
+        <div id="shiftTimeInfo" class="text-sm text-gray-500 mt-1"></div>
+        <div id="shiftManagerInfo" class="text-sm text-blue-400 mt-1 hidden"></div>
+      </div>
+      <div id="shiftManagerSelectBlock">
+        <label class="block text-sm text-gray-400 mb-1">Ответственный за смену</label>
+        <select id="shiftManagerSelect" class="w-full rounded-lg px-3 py-2.5 bg-gray-800 border border-gray-700 focus:border-blue-500 outline-none transition">
+          <option value="">— Выберите сотрудника —</option>
+        </select>
+        <p class="text-xs text-gray-500 mt-1">Список загружается из вкладки «Персонал»</p>
+      </div>
+      <div class="bg-blue-900/20 border border-blue-800/50 rounded-lg p-3">
+        <div class="text-xs text-blue-300 flex items-start gap-2">
+          <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span>Все продажи и сессии будут привязаны к выбранному сотруднику</span>
+        </div>
+      </div>
+    </div>
+    <div class="mt-6 flex gap-3 pt-4 border-t border-gray-800">
+      <button onclick="closeShiftModal()" class="flex-1 py-2.5 btn-secondary rounded-lg text-sm font-medium">Закрыть</button>
+      <button onclick="toggleShift()" id="shiftToggleBtn" class="flex-1 py-2.5 btn-success rounded-lg text-sm font-medium">Открыть смену</button>
+    </div>
+  </div>
+</div>
+
+<div id="menuItemModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 modal-overlay no-print p-4">
+  <div class="glass rounded-2xl p-5 md:p-6 w-full max-w-md modal-content">
+    <div class="flex justify-between items-center mb-5">
+      <h3 class="font-semibold text-lg" id="menuItemModalTitle">Добавить товар</h3>
+      <button onclick="closeMenuItemModal()" class="text-gray-400 hover:text-white transition p-1 hover:bg-gray-800 rounded-lg">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+    </div>
+    <div class="space-y-4">
+      <div><label class="block text-sm text-gray-400 mb-1">Название товара *</label><input type="text" id="menuItemName" class="w-full rounded-lg px-3 py-2.5" placeholder="Название"></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-sm text-gray-400 mb-1">Цена (₸) *</label><input type="number" id="menuItemPrice" class="w-full rounded-lg px-3 py-2.5" min="0" placeholder="200"></div>
+        <div><label class="block text-sm text-gray-400 mb-1">Категория</label>
+          <select id="menuItemCategory" class="w-full rounded-lg px-3 py-2.5">
+            <option value="drinks">🍺 Напитки</option><option value="food">🍕 Еда</option><option value="snacks">🥜 Закуски</option><option value="other">📦 Другое</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="mt-6 flex gap-3 pt-4 border-t border-gray-800">
+      <button onclick="closeMenuItemModal()" class="flex-1 py-2.5 btn-secondary rounded-lg text-sm font-medium">Отмена</button>
+      <button onclick="saveMenuItem()" class="flex-1 py-2.5 btn-primary rounded-lg text-sm font-medium">Сохранить товар</button>
+    </div>
+  </div>
+</div>
+
+<div id="receiptModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 modal-overlay no-print p-4">
+  <div class="bg-white rounded-2xl p-6 w-full max-w-sm modal-content">
+    <div class="receipt-print" id="receiptContent"></div>
+    <div class="mt-6 flex gap-3">
+      <button onclick="closeReceiptModal()" class="flex-1 py-3 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm font-medium text-gray-800 transition">Закрыть</button>
+      <button onclick="printReceipt()" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium text-white transition flex items-center justify-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+        Печать
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================
+// КОНФИГУРАЦИЯ И ХРАНИЛИЩЕ
+// ============================================
+const STORAGE = {
+  TABLES: 'bc_tables_v2',
+  SESSIONS: 'bc_sessions_v2', 
+  BAR_ITEMS: 'bc_bar_items_v2',
+  BAR_SALES: 'bc_bar_sales_v2',
+  SETTINGS: 'bc_settings_v2',
+  STAFF: 'bc_staff_v2',
+  BOOKINGS: 'bc_bookings_v2',
+  SHIFT: 'bc_current_shift'
+};
+
+let tables = [];
+let sessions = [];
+let barItems = [];
+let barSales = [];
+let settings = { pricePerHour: 500, minTimeMinutes: 30, roundingMinutes: 15 };
+let staff = [];
+let bookings = [];
+let currentOrder = [];
+let currentShift = null;
+
+// Загрузка данных
+function load(key, def = null) {
+  try {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : def;
+  } catch(e) { return def; }
+}
+
+function save(key, data) {
+  localStorage.setItem(key, JSON.stringify(data));
+  // Уведомляем другие вкладки
+  window.dispatchEvent(new StorageEvent('storage', { key, newValue: JSON.stringify(data) }));
+}
+
+// Утилиты
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 9); }
+function fmtPrice(n) { return new Intl.NumberFormat('ru-RU').format(n) + ' ₸'; }
+function fmtDur(min) { const h = Math.floor(min/60), m = Math.round(min%60); return h ? `${h}ч ${m}м` : `${m}м`; }
+function fmtTime(d) { return d ? new Date(d).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'}) : '—'; }
+function fmtDate(d) { return d ? new Date(d).toLocaleDateString('ru-RU') : '—'; }
+function today() { return new Date().toISOString().split('T')[0]; }
+
+function notify(msg, type='info') {
+  const c = document.getElementById('notifications');
+  const colors = {info:'bg-blue-600',success:'bg-green-600',error:'bg-red-600',warning:'bg-yellow-600'};
+  const icons = {info:'ℹ️',success:'✅',error:'❌',warning:'⚠️'};
+  const n = document.createElement('div');
+  n.className = `notification ${colors[type]} text-white px-4 py-3 rounded-xl shadow-2xl text-sm flex items-center gap-3`;
+  n.innerHTML = `<span class="text-lg">${icons[type]}</span><span>${msg}</span>`;
+  c.appendChild(n);
+  setTimeout(() => { n.style.opacity='0'; setTimeout(()=>n.remove(),300); }, 3000);
+}
+
+// ============================================
+// ВКЛАДКИ
+// ============================================
+function switchTab(name) {
+    
+  document.querySelectorAll('.tab-content').forEach(el => { el.classList.add('hidden'); el.style.opacity='0'; });
+  document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('bg-gray-800/70','text-gray-400'); });
+  
+  const tab = document.getElementById(`tab-${name}`);
+  if(tab) { tab.classList.remove('hidden'); setTimeout(()=>tab.style.opacity='1',10); }
+  
+  const btn = document.querySelector(`[data-tab="${name}"]`);
+  if(btn) { btn.classList.add('active'); btn.classList.remove('bg-gray-800/70','text-gray-400'); }
+  
+  if(name==='tables') renderTables();
+  if(name==='shop') { renderBarMenu(); updateOrderTableSelect(); renderOrder(); }
+  switch (tabName) {
+        case 'tables': renderTables(); break;
+        case 'staff': renderStaff(); renderStaffShifts(); break;
+        case 'shop': renderBarMenu(); updateOrderTableSelect(); renderOrder(); break;
+        case 'reports': generateReport(); break;
+        case 'settings': loadSettings(); renderTableTypes(); renderRoles(); renderTariffs(); break;
+        case 'bookings': renderBookings(); break;  // ✅ ДОБАВЬ СЮДА
+        // Добавь в функцию switchTab
+case 'bookings': renderBookings(); break;
+
+// Добавь синхронизацию
+window.addEventListener('storage', (e) => {
+    if(e.key === 'bc_bookings_v2') {
+        if(!document.getElementById('tab-bookings')?.classList.contains('hidden')) {
+            renderBookings();
+        }
+        // Если есть новая бронь - уведомление
+        if(e.newValue) {
+            const newBookings = JSON.parse(e.newValue);
+            const pending = newBookings.filter(b => b.status === 'pending').length;
+            if(pending > 0) {
+                showNotification(`🔔 Новая заявка на бронирование!`, 'info');
+            }
+        }
+    }
+});
+    }
+}
+
+// ============================================
+// СТОЛЫ
+// ============================================
+function getTablePrice(t) {
+  return (t.pricingMode==='custom' && t.customPrice) ? t.customPrice : settings.pricePerHour;
+}
+
+function calcCost(start, end, table) {
+  const diff = Math.max(0, (new Date(end||Date.now()) - new Date(start)) / 60000);
+  const price = getTablePrice(table);
+  const billable = Math.max(diff, settings.minTimeMinutes);
+  const rounded = Math.ceil(billable / settings.roundingMinutes) * settings.roundingMinutes;
+  return { min: Math.round(diff), bill: rounded, cost: Math.round((rounded/60)*price), hrs: rounded/60, price };
+}
+
+function isBooked(tableId, date=today()) {
+  return bookings.some(b => b.tableId===tableId && b.date===date && b.status==='confirmed' && (!b.endTime || new Date(b.endTime) > new Date()));
+}
+
+function renderTables() {
+  const grid = document.getElementById('tablesGrid');
+  if(!grid) return;
+  grid.innerHTML = '';
+  
+  // Создаем тестовые столы если пусто
+  if(tables.length === 0) {
+    for(let i=1; i<=6; i++) {
+      tables.push({ id: uid(), name: `Стол ${i}`, type: 'Стандартный', pricingMode: 'global', pricePerHour: settings.pricePerHour });
+    }
+    save(STORAGE.TABLES, tables);
+  }
+  
+  tables.forEach(t => {
+    const active = sessions.find(s => s.tableId===t.id && s.status==='active');
+    const booked = isBooked(t.id);
+    
+    const card = document.createElement('div');
+    card.className = `table-card glass-card rounded-xl p-4 md:p-5 border-2 ${
+      active ? 'table-active neon-glow-green' : (booked ? 'table-booked' : 'table-inactive')
+    }`;
+    
+    let html = `
+      <div class="flex justify-between items-start mb-3">
+        <div>
+          <h4 class="font-semibold text-base md:text-lg">${t.name}</h4>
+          <div class="text-xs text-gray-500 mt-0.5">${fmtPrice(getTablePrice(t))}/час</div>
+        </div>
+        <div class="flex items-center gap-2">
+          ${active 
+            ? '<div class="w-2.5 h-2.5 bg-green-500 rounded-full pulse-dot"></div><span class="text-xs text-green-400 font-medium">Занят</span>'
+            : (booked 
+              ? '<div class="w-2.5 h-2.5 bg-purple-500 rounded-full pulse-dot"></div><span class="text-xs text-purple-400 font-medium">Бронь</span>'
+              : '<div class="w-2.5 h-2.5 bg-gray-600 rounded-full"></div><span class="text-xs text-gray-500">Свободен</span>'
+            )
+          }
+        </div>
+      </div>
+    `;
+    
+    if(active) {
+      const dur = (Date.now() - new Date(active.startTime)) / 60000;
+      const calc = calcCost(active.startTime, Date.now(), t);
+      html += `
+        <div class="space-y-1.5 mb-4 p-3 bg-gray-900/40 rounded-lg">
+          <div class="text-green-400 font-mono text-lg font-semibold">${fmtDur(Math.round(dur))}</div>
+          <div class="text-yellow-400 text-sm font-medium">~${fmtPrice(calc.cost)}</div>
+          ${active.shopTotal>0 ? `<div class="text-yellow-400 text-sm font-medium mt-1">🛒 Магазин: ${fmtPrice(active.shopTotal)}</div>` : ''}
+          <div class="text-xs text-gray-400">Клиент: ${active.clientName||'—'}</div>
+          <div class="text-xs text-gray-400">Начало: ${fmtTime(active.startTime)}</div>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="openPayModal('${t.id}','${active.id}')" class="flex-1 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-xs md:text-sm font-medium transition">💳 Оплатить</button>
+          <button onclick="cancelSession('${active.id}')" class="px-3 py-2 bg-red-600/90 hover:bg-red-600 rounded-lg text-xs md:text-sm transition">✕</button>
+        </div>
+      `;
+    } else if(booked) {
+      const b = bookings.find(x => x.tableId===t.id && x.status==='confirmed' && x.date===today());
+      html += `
+        <div class="mt-2 p-2 bg-purple-900/30 border border-purple-600/30 rounded-lg text-xs mb-4">
+          <div class="text-purple-400 font-medium mb-1">📋 Забронирован</div>
+          <div class="text-gray-400">${b?.clientName||'—'}</div>
+          <div class="text-gray-500">${b?.time||'—'} • ${b?.isUnlimited ? '♾' : (b?.duration+' ч')||''}</div>
+        </div>
+        <button onclick="openSessionModal('${t.id}')" class="w-full py-2 btn-primary rounded-lg text-xs md:text-sm font-medium transition">▶ Старт</button>
+      `;
+    } else {
+      const todayRev = sessions.filter(s => s.tableId===t.id && s.status==='completed' && s.endTime?.startsWith(today())).reduce((a,s)=>a+(s.cost||0),0);
+      html += `
+        <div class="space-y-1.5 mb-4"><div class="text-xs text-gray-500">Сегодня: <span class="text-green-400">${fmtPrice(todayRev)}</span></div></div>
+        <button onclick="openSessionModal('${t.id}')" class="w-full py-2 btn-primary rounded-lg text-xs md:text-sm font-medium transition">▶ Старт</button>
+      `;
+    }
+    
+    card.innerHTML = html;
+    grid.appendChild(card);
+  });
+  
+  updateStats();
+}
+
+function updateStats() {
+  const todayStr = today();
+  const active = tables.filter(t => sessions.some(s => s.tableId===t.id && s.status==='active')).length;
+  const completed = sessions.filter(s => s.status==='completed' && s.endTime?.startsWith(todayStr));
+  const rev = completed.reduce((a,s)=>a+(s.cost||0),0);
+  
+  document.getElementById('statActiveTables').textContent = active;
+  document.getElementById('statTodayRevenue').textContent = fmtPrice(rev);
+  document.getElementById('statTodaySessions').textContent = completed.length;
+  document.getElementById('statAvgCheck').textContent = completed.length ? fmtPrice(Math.round(rev/completed.length)) : '0 ₸';
+}
+
+// ============================================
+// СЕССИИ
+// ============================================
+function openSessionModal(tableId) {
+  const t = tables.find(x => x.id === tableId);
+  if(!t) return;
+  
+  // Предупреждение о брони
+  if(isBooked(tableId)) {
+    const b = bookings.find(x => x.tableId===tableId && x.status==='confirmed' && x.date===today());
+    if(!confirm(`⚠️ Стол "${t.name}" забронирован!\nКлиент: ${b?.clientName}\nТел: ${b?.clientPhone}\nВремя: ${b?.time}\n\nНачать сессию всё равно?`)) {
+      return;
+    }
+  }
+  
+  document.getElementById('sessionTableName').value = t.name;
+  document.getElementById('sessionTableId').value = tableId;
+  document.getElementById('sessionClientName').value = '';
+  document.getElementById('sessionModal').classList.remove('hidden');
+}
+
+function closeSessionModal() { document.getElementById('sessionModal').classList.add('hidden'); }
+
+function startSession() {
+  const tableId = document.getElementById('sessionTableId').value;
+  const client = document.getElementById('sessionClientName').value.trim();
+  
+  sessions.push({
+    id: uid(),
+    tableId,
+    tableName: tables.find(t=>t.id===tableId)?.name,
+    clientName: client,
+    startTime: new Date().toISOString(),
+    status: 'active',
+    cost: 0,
+    shopTotal: 0,
+    shopItems: [],
+    operatorId: currentShift?.managerId || null,
+    operatorName: currentShift?.managerId ? (staff.find(s=>s.id===currentShift.managerId)?.name) : null
+  });
+  
+  save(STORAGE.SESSIONS, sessions);
+  closeSessionModal();
+  renderTables();
+  updateOrderTableSelect();
+  notify('Сессия начата', 'success');
+}
+
+function cancelSession(sessionId) {
+  if(!confirm('Отменить сессию?')) return;
+  sessions = sessions.filter(s => s.id !== sessionId);
+  save(STORAGE.SESSIONS, sessions);
+  renderTables();
+  updateOrderTableSelect();
+  notify('Сессия отменена', 'warning');
+}
+
+// ============================================
+// ОПЛАТА
+// ============================================
+function openPayModal(tableId, sessionId) {
+  const s = sessions.find(x => x.id === sessionId);
+  const t = tables.find(x => x.id === tableId);
+  if(!s || !t) return;
+  
+  const calc = calcCost(s.startTime, Date.now(), t);
+  const shopCost = s.shopTotal || 0;
+  const shopItems = s.shopItems || [];
+  
+  document.getElementById('payTableName').textContent = t.name;
+  document.getElementById('payStartTime').textContent = fmtDate(s.startTime) + ' ' + fmtTime(s.startTime);
+  document.getElementById('payDuration').textContent = fmtDur(calc.min);
+  
+  let details = `<div class="flex justify-between border-b border-gray-700/50 pb-2"><span>Игра (${calc.hrs.toFixed(2)} ч):</span><span class="font-medium text-white">${fmtPrice(calc.cost)}</span></div>`;
+  
+  if(shopCost > 0 && shopItems.length > 0) {
+    details += `<div class="flex justify-between text-yellow-400 mt-2"><span>🛒 Магазин:</span><span class="font-medium">${fmtPrice(shopCost)}</span></div>`;
+    details += `<div class="pl-2 mt-1 space-y-0.5 text-xs text-gray-400 border-l-2 border-gray-700 max-h-32 overflow-y-auto">`;
+    shopItems.forEach(i => { details += `<div>• ${i.name} × ${i.quantity}</div>`; });
+    details += `</div>`;
+  }
+  
+  details += `<div class="text-[10px] text-gray-500 mt-2 pt-1 border-t border-gray-700/50">Ставка: ${fmtPrice(calc.price)}/час. Мин: ${settings.minTimeMinutes} мин.</div>`;
+  
+  document.getElementById('payCalculation').innerHTML = details;
+  document.getElementById('payCalculation').dataset.base = calc.cost + shopCost;
+  document.getElementById('payTotal').textContent = fmtPrice(calc.cost + shopCost);
+  document.getElementById('payServiceFee').value = '0';
+  document.getElementById('paySessionId').value = sessionId;
+  document.getElementById('payTableId').value = tableId;
+  document.getElementById('payModal').classList.remove('hidden');
+}
+
+function updatePayTotal() {
+  const base = parseFloat(document.getElementById('payCalculation').dataset.base || '0');
+  const fee = parseFloat(document.getElementById('payServiceFee').value) || 0;
+  document.getElementById('payTotal').textContent = fmtPrice(base + fee);
+}
+
+function closePayModal() { document.getElementById('payModal').classList.add('hidden'); }
+
+function processPayment() {
+  const sid = document.getElementById('paySessionId').value;
+  const tid = document.getElementById('payTableId').value;
+  const method = document.getElementById('payMethod').value;
+  const fee = parseFloat(document.getElementById('payServiceFee').value) || 0;
+  
+  const s = sessions.find(x => x.id === sid);
+  const t = tables.find(x => x.id === tid);
+  if(!s || !t) { notify('Ошибка: сессия не найдена', 'error'); closePayModal(); return; }
+  
+  const calc = calcCost(s.startTime, Date.now(), t);
+  const shopCost = s.shopTotal || 0;
+  const total = calc.cost + shopCost + fee;
+  
+  s.endTime = new Date().toISOString();
+  s.cost = calc.cost;
+  s.status = 'completed';
+  s.durationMinutes = calc.bill;
+  s.paymentMethod = method;
+  s.serviceFee = fee;
+  s.totalPaid = total;
+  
+  save(STORAGE.SESSIONS, sessions);
+  closePayModal();
+  renderTables();
+  showReceipt(s, t, calc, shopCost, fee, total);
+  notify(`Оплачено: ${fmtPrice(total)}`, 'success');
+}
+
+function showReceipt(s, t, calc, shop, fee, total) {
+  const el = document.getElementById('receiptContent');
+  const method = {cash:'💵 Наличные',card:'💳 Карта',transfer:'📱 Перевод',mix:'🔄 Смешанный'}[s.paymentMethod]||'';
+  
+  el.innerHTML = `
+    <div class="header">
+      <div style="font-size:16pt;font-weight:bold">BilliardClub Cashier</div>
+      <div style="font-size:9pt;color:#666">Чек закрытия сессии</div>
+      <div style="font-size:9pt;color:#666;margin-top:4px">${fmtDate(new Date())} ${fmtTime(new Date())}</div>
+      <div style="font-size:10pt;margin-top:2px">Стол: ${t.name}</div>
+    </div>
+    <div style="margin:8px 0; padding-bottom:6px; border-bottom:1px dashed #666;">
+      <div class="item"><span>Игра (${calc.hrs.toFixed(2)} ч)</span><span>${fmtPrice(calc.cost)}</span></div>
+    </div>
+    ${shop>0 ? `<div style="margin:4px 0"><strong>🛒 Магазин:</strong> ${fmtPrice(shop)}</div>` : ''}
+    ${fee>0 ? `<div class="item" style="color:#f59e0b"><span>💁 Обслуживание</span><span>${fmtPrice(fee)}</span></div>` : ''}
+    <div class="total">
+      <div class="item"><span>ИТОГО К ОПЛАТЕ:</span><span>${fmtPrice(total)}</span></div>
+      <div style="font-size:9pt; margin-top:4px; color:#666">Оплата: ${method}</div>
+    </div>
+    <div class="footer"><div>Спасибо за игру!</div></div>
+  `;
+  document.getElementById('receiptModal').classList.remove('hidden');
+}
+
+function closeReceiptModal() { document.getElementById('receiptModal').classList.add('hidden'); }
+
+function printReceipt() {
+  const w = window.open('','_blank','width=400,height=600');
+  w.document.write(`<!DOCTYPE html><html><head><title>Чек</title><style>body{font-family:monospace;padding:20px}.r{max-width:320px;margin:0 auto;border:1px dashed #666;padding:15px}.h{text-align:center;border-bottom:1px dashed #666;padding-bottom:10px}.i{display:flex;justify-content:space-between;margin:4px 0}.t{border-top:1px dashed #666;padding-top:10px;margin-top:10px;font-weight:bold}.f{text-align:center;margin-top:15px;font-size:10pt;color:#666}@media print{body{padding:0}.r{border:none}}</style></head><body><div class="r">${document.getElementById('receiptContent').innerHTML}</div><script>window.print();window.close();<\/script></body></html>`);
+  w.document.close();
+  closeReceiptModal();
+}
+
+// ============================================
+// МАГАЗИН
+// ============================================
+const CATS = {drinks:'🍺 Напитки',food:'🍕 Еда',snacks:'🥜 Закуски',other:'📦 Другое'};
+
+function renderBarMenu() {
+  const grid = document.getElementById('barMenuGrid');
+  if(!grid) return;
+  grid.innerHTML = '';
+  
+  const cat = document.getElementById('menuCategoryFilter')?.value || 'all';
+  const items = cat==='all' ? barItems : barItems.filter(i=>i.category===cat);
+  
+  if(items.length === 0) {
+    grid.innerHTML = `<div class="col-span-full empty-state glass rounded-xl p-6 text-center text-gray-500">Товары не найдены</div>`;
+    return;
+  }
+  
+  items.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'glass-card rounded-xl p-3 text-left hover:border-blue-500/50 transition text-sm relative group overflow-hidden cursor-pointer';
+    card.innerHTML = `
+      <div class="absolute top-2 right-2 flex gap-1 z-10 opacity-0 group-hover:opacity-100 transition">
+        <button onclick="event.stopPropagation(); editMenuItem('${item.id}')" class="p-1.5 bg-blue-600/90 rounded hover:bg-blue-600 transition" title="Редактировать">✏️</button>
+        <button onclick="event.stopPropagation(); deleteMenuItem('${item.id}')" class="p-1.5 bg-red-600/90 rounded hover:bg-red-600 transition" title="Удалить">🗑️</button>
+      </div>
+      <div class="w-full h-20 bg-gray-800 rounded-lg mb-2 flex items-center justify-center text-gray-500 text-xs">📷 Нет фото</div>
+      <div class="font-medium truncate">${item.name}</div>
+      <div class="text-blue-400 mt-0.5 font-semibold">${fmtPrice(item.price)}</div>
+      <div class="text-xs text-gray-500 mt-0.5">${CATS[item.category]||'📦 Другое'}</div>
+      <div class="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/5 transition rounded-xl pointer-events-none"></div>
+    `;
+    card.onclick = () => addToCart(item);
+    grid.appendChild(card);
+  });
+}
+
+function addToCart(item) {
+  const exist = currentOrder.find(o=>o.id===item.id);
+  if(exist) exist.quantity++; else currentOrder.push({...item, quantity:1});
+  renderOrder();
+  notify(`${item.name} добавлен`, 'success');
+}
+
+function updateQuantity(id, delta) {
+  const item = currentOrder.find(o=>o.id===id);
+  if(item) {
+    item.quantity += delta;
+    if(item.quantity <= 0) currentOrder = currentOrder.filter(o=>o.id!==id);
+  }
+  renderOrder();
+}
+
+function renderOrder() {
+  const c = document.getElementById('orderItems');
+  if(!c) return;
+  
+  if(currentOrder.length === 0) {
+    c.innerHTML = '<div class="text-sm text-gray-500 text-center py-6">Добавьте товары из меню</div>';
+    document.getElementById('orderSubtotal').textContent = '0 ₸';
+    document.getElementById('orderDiscount').textContent = '0 ₸';
+    document.getElementById('orderTotal').textContent = '0 ₸';
+    return;
+  }
+  
+  c.innerHTML = '';
+  let sub = 0;
+  
+  currentOrder.forEach(item => {
+    const tot = item.price * item.quantity;
+    sub += tot;
+    const div = document.createElement('div');
+    div.className = 'flex justify-between items-center bg-gray-900/60 rounded-xl px-3 py-2.5 group';
+    div.innerHTML = `
+      <div class="flex-1 min-w-0 pr-2"><div class="text-sm font-medium truncate">${item.name}</div><div class="text-xs text-gray-500">${fmtPrice(item.price)} × ${item.quantity}</div></div>
+      <div class="flex items-center gap-1.5 flex-shrink-0">
+        <button onclick="updateQuantity('${item.id}',-1)" class="quantity-btn bg-gray-700 hover:bg-gray-600 text-white text-sm font-bold">−</button>
+        <span class="text-sm font-medium w-6 text-center">${item.quantity}</span>
+        <button onclick="updateQuantity('${item.id}',1)" class="quantity-btn bg-gray-700 hover:bg-gray-600 text-white text-sm font-bold">+</button>
+        <span class="text-sm text-green-400 font-medium w-16 text-right">${fmtPrice(tot)}</span>
+        <button onclick="removeFromCart('${item.id}')" class="text-red-400 hover:text-red-300 p-1 opacity-70 hover:opacity-100 transition">✕</button>
+      </div>
+    `;
+    c.appendChild(div);
+  });
+  
+  const disc = parseInt(document.getElementById('orderDiscountInput')?.value)||0;
+  document.getElementById('orderSubtotal').textContent = fmtPrice(sub);
+  document.getElementById('orderDiscount').textContent = disc>0 ? '-'+fmtPrice(disc) : '0 ₸';
+  document.getElementById('orderTotal').textContent = fmtPrice(Math.max(0, sub-disc));
+}
+
+function applyDiscount() { renderOrder(); notify('Скидка применена', 'success'); }
+function clearOrder() {
+  if(!currentOrder.length) return;
+  if(!confirm('Очистить заказ?')) return;
+  currentOrder = [];
+  document.getElementById('orderDiscountInput').value = '0';
+  document.getElementById('orderTableSelect').value = '';
+  updateOrderTableInfo();
+  renderOrder();
+  notify('Заказ очищен', 'info');
+}
+function removeFromCart(id) { currentOrder = currentOrder.filter(o=>o.id!==id); renderOrder(); }
+
+function updateOrderTableSelect() {
+  const sel = document.getElementById('orderTableSelect');
+  if(!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Без стола (розничная продажа) —</option>';
+  
+  sessions.filter(s=>s.status==='active').forEach(s => {
+    const t = tables.find(x=>x.id===s.tableId);
+    const opt = document.createElement('option');
+    opt.value = s.tableId;
+    opt.textContent = t ? `Стол ${t.name}` : `Стол ${s.tableId}`;
+    sel.appendChild(opt);
+  });
+  
+  const valid = sessions.some(s=>s.tableId===cur && s.status==='active');
+  sel.value = valid ? cur : '';
+}
+
+function updateOrderTableInfo() {
+  const tid = document.getElementById('orderTableSelect')?.value.trim()||'';
+  const el = document.getElementById('orderTableInfo');
+  if(!el) return;
+  
+  if(!tid) {
+    el.textContent = 'Розничная продажа — чек будет сформирован';
+    el.className = 'text-xs text-blue-400 mt-1';
+  } else {
+    const t = tables.find(x=>x.id===tid);
+    el.textContent = `✅ Привязано к: ${t?.name||'Стол'}`;
+    el.className = 'text-xs text-green-400 mt-1 font-medium';
+  }
+}
+
+function completeBarOrder() {
+  if(!currentOrder.length) { notify('Добавьте товары','error'); return; }
+  
+  const tid = document.getElementById('orderTableSelect')?.value.trim()||'';
+  const disc = parseInt(document.getElementById('orderDiscountInput').value)||0;
+  const sub = currentOrder.reduce((a,i)=>a+i.price*i.quantity,0);
+  const total = Math.max(0, sub-disc);
+  
+  if(tid) {
+    const s = sessions.find(x=>x.tableId===tid && x.status==='active');
+    if(!s) { notify('Нет активной сессии для этого стола','error'); return; }
+    if(!s.shopItems) s.shopItems = [];
+    if(!s.shopTotal) s.shopTotal = 0;
+    
+    currentOrder.forEach(i => s.shopItems.push({name:i.name,price:i.price,quantity:i.quantity,total:i.price*i.quantity}));
+    s.shopTotal += total;
+    save(STORAGE.SESSIONS, sessions);
+    notify(`Заказ ${fmtPrice(total)} привязан к ${s.tableName}`,'success');
+  } else {
+    barSales.push({
+      id: uid(),
+      tableId: null,
+      tableName: 'Розница',
+      isRetail: true,
+      items: currentOrder.map(i=>({...i,total:i.price*i.quantity})),
+      subtotal: sub,
+      discount: disc,
+      total,
+      operatorId: currentShift?.managerId,
+      operatorName: currentShift?.managerId ? (staff.find(s=>s.id===currentShift.managerId)?.name) : null,
+      date: new Date().toISOString()
+    });
+    save(STORAGE.BAR_SALES, barSales);
+    showRetailReceipt(barSales[barSales.length-1]);
+  }
+  
+  currentOrder = [];
+  document.getElementById('orderTableSelect').value = '';
+  document.getElementById('orderDiscountInput').value = '0';
+  renderOrder();
+  updateOrderTableSelect();
+  renderBarSalesHistory();
+  renderTables();
+}
+
+function showRetailReceipt(sale) {
+  const el = document.getElementById('receiptContent');
+  el.innerHTML = `
+    <div class="header">
+      <div style="font-size:16pt;font-weight:bold">BilliardClub Cashier</div>
+      <div style="font-size:9pt;color:#666">Чек розничной продажи</div>
+      <div style="font-size:9pt;color:#666;margin-top:4px">${fmtDate(sale.date)} ${fmtTime(sale.date)}</div>
+    </div>
+    ${sale.items.map(i=>`<div class="item"><span>${i.name} ×${i.quantity}</span><span>${fmtPrice(i.total)}</span></div>`).join('')}
+    <div class="total">
+      <div style="display:flex;justify-content:space-between;margin:4px 0"><span>Субитог:</span><span>${fmtPrice(sale.subtotal)}</span></div>
+      ${sale.discount>0 ? `<div style="display:flex;justify-content:space-between;margin:4px 0;color:#dc2626"><span>Скидка:</span><span>-${fmtPrice(sale.discount)}</span></div>` : ''}
+      <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:14pt"><span>ИТОГО:</span><span>${fmtPrice(sale.total)}</span></div>
+    </div>
+    <div class="footer"><div>Спасибо за заказ!</div></div>
+  `;
+  document.getElementById('receiptModal').classList.remove('hidden');
+}
+
+function renderBarSalesHistory() {
+  const tb = document.getElementById('barSalesHistory');
+  if(!tb) return;
+  tb.innerHTML = '';
+  
+  if(barSales.length === 0) {
+    tb.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-gray-500">Продаж пока нет</td></tr>';
+    return;
+  }
+  
+  const sorted = [...barSales].reverse().slice(0,50);
+  sorted.forEach(s => {
+    const row = document.createElement('tr');
+    row.className = 'border-t border-gray-800 hover:bg-gray-900/30 transition';
+    const sum = s.items.slice(0,2).map(i=>`${i.name}×${i.quantity}`).join(', ')+(s.items.length>2?` +${s.items.length-2}`:'');
+    const badge = s.isRetail?'<span class="px-2 py-0.5 bg-purple-900/50 text-purple-400 rounded text-xs">Розница</span>':`<span class="text-gray-300">${s.tableName}</span>`;
+    const operator = s.operatorName || '—';
+    
+    row.innerHTML = `
+      <td class="px-4 py-2.5 text-gray-400 text-xs">${fmtTime(s.date)}</td>
+      <td class="px-4 py-2.5">${badge}</td>
+      <td class="px-4 py-2.5 text-xs text-gray-400 max-w-xs truncate" title="${sum}">${sum}</td>
+      <td class="px-4 py-2.5 text-right text-green-400 font-medium">${fmtPrice(s.total)}</td>
+      <td class="px-4 py-2.5 text-center text-gray-400 text-xs">${operator}</td>
+    `;
+    tb.appendChild(row);
+  });
+}
+
+function openAddMenuItemModal() {
+  document.getElementById('menuItemModalTitle').textContent = 'Добавить товар';
+  document.getElementById('menuItemName').value = '';
+  document.getElementById('menuItemPrice').value = '';
+  document.getElementById('menuItemCategory').value = 'drinks';
+  document.getElementById('menuItemModal').classList.remove('hidden');
+}
+
+function closeMenuItemModal() { document.getElementById('menuItemModal').classList.add('hidden'); }
+
+function editMenuItem(id) {
+  const item = barItems.find(i=>i.id===id);
+  if(!item) return;
+  document.getElementById('menuItemModalTitle').textContent = 'Редактировать товар';
+  document.getElementById('menuItemName').value = item.name;
+  document.getElementById('menuItemPrice').value = item.price;
+  document.getElementById('menuItemCategory').value = item.category;
+  document.getElementById('menuItemModal').classList.remove('hidden');
+  document.getElementById('menuItemModal').dataset.editId = id;
+}
+
+function saveMenuItem() {
+  const name = document.getElementById('menuItemName').value.trim();
+  const price = parseFloat(document.getElementById('menuItemPrice').value)||0;
+  const cat = document.getElementById('menuItemCategory').value;
+  
+  if(!name || price<=0) { notify('Заполните название и цену','error'); return; }
+  
+  const eid = document.getElementById('menuItemModal').dataset.editId;
+  if(eid) {
+    const idx = barItems.findIndex(i=>i.id===eid);
+    if(idx!==-1) { barItems[idx].name=name; barItems[idx].price=price; barItems[idx].category=cat; }
+    notify('Товар обновлён','success');
+  } else {
+    barItems.push({id:uid(),name,price,category:cat});
+    notify('Товар добавлен','success');
+  }
+  
+  delete document.getElementById('menuItemModal').dataset.editId;
+  save(STORAGE.BAR_ITEMS, barItems);
+  closeMenuItemModal();
+  renderBarMenu();
+}
+
+function deleteMenuItem(id) {
+  if(!confirm('Удалить товар?')) return;
+  barItems = barItems.filter(i=>i.id!==id);
+  save(STORAGE.BAR_ITEMS, barItems);
+  renderBarMenu();
+}
+
+// ============================================
+// СМЕНА
+// ============================================
+function openShiftModal() {
+  const select = document.getElementById('shiftManagerSelect');
+  if(select) {
+    select.innerHTML = '<option value="">— Выберите сотрудника —</option>';
+    const active = staff.filter(s => s.status === 'active');
+    if(active.length === 0) {
+      select.innerHTML += '<option value="" disabled>Нет активных сотрудников</option>';
+    } else {
+      active.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = `${s.name} (${s.position})`;
+        select.appendChild(opt);
+      });
+    }
+  }
+  updateShiftModal();
+  document.getElementById('shiftModal').classList.remove('hidden');
+}
+
+function closeShiftModal() { document.getElementById('shiftModal').classList.add('hidden'); }
+
+function updateShiftModal() {
+  const st = document.getElementById('shiftStatus');
+  const ti = document.getElementById('shiftTimeInfo');
+  const btn = document.getElementById('shiftToggleBtn');
+  const mgrInfo = document.getElementById('shiftManagerInfo');
+  const selectBlock = document.getElementById('shiftManagerSelectBlock');
+  
+  if(currentShift && currentShift.isOpen) {
+    st.textContent = '✅ Открыта';
+    st.className = 'text-lg font-semibold text-green-400';
+    const diff = Date.now() - new Date(currentShift.startTime).getTime();
+    const h = Math.floor(diff/3600000), m = Math.floor((diff%3600000)/60000);
+    ti.textContent = `С: ${fmtDate(currentShift.startTime)} ${fmtTime(currentShift.startTime)} | Длительность: ${h}ч ${m}м`;
+    
+    const manager = staff.find(s => s.id === currentShift.managerId);
+    if(manager) {
+      mgrInfo.textContent = `Ответственный: ${manager.name} (${manager.position})`;
+      mgrInfo.classList.remove('hidden');
+    }
+    selectBlock.classList.add('hidden');
+    btn.textContent = 'Закрыть смену';
+    btn.className = 'flex-1 py-2.5 btn-danger rounded-lg text-sm font-medium';
+  } else {
+    st.textContent = '❌ Закрыта';
+    st.className = 'text-lg font-semibold text-red-400';
+    ti.textContent = 'Смена не активна';
+    mgrInfo.classList.add('hidden');
+    selectBlock.classList.remove('hidden');
+    btn.textContent = 'Открыть смену';
+    btn.className = 'flex-1 py-2.5 btn-success rounded-lg text-sm font-medium';
+  }
+}
+
+function toggleShift() {
+  if(currentShift && currentShift.isOpen) {
+    if(!confirm('Закрыть смену?')) return;
+    currentShift = null;
+    localStorage.removeItem(STORAGE.SHIFT);
+    notify('Смена закрыта','success');
+  } else {
+    const managerId = document.getElementById('shiftManagerSelect')?.value;
+    if(!managerId) { notify('Выберите ответственного сотрудника','error'); return; }
+    const manager = staff.find(s => s.id === managerId);
+    currentShift = {
+      isOpen: true,
+      managerId,
+      managerName: manager ? manager.name : 'Неизвестно',
+      startTime: new Date().toISOString()
+    };
+    save(STORAGE.SHIFT, currentShift);
+    notify(`Смена открыта: ${manager?.name || '—'}`,'success');
+  }
+  updateShiftModal();
+  updateShiftDisplay();
+}
+
+function updateShiftDisplay() {
+  const el = document.getElementById('currentShift');
+  if(!el) return;
+  if(currentShift && currentShift.isOpen) {
+    el.textContent = `Смена: ${currentShift.managerName || '—'}`;
+    el.className = 'text-xs text-green-400 font-medium';
+  } else {
+    el.textContent = 'Смена закрыта';
+    el.className = 'text-xs text-gray-500';
+  }
+}
+
+// ============================================
+// СИНХРОНИЗАЦИЯ
+// ============================================
+function syncListener(e) {
+  if(e.key === STORAGE.SESSIONS) { sessions = load(STORAGE.SESSIONS, []); renderTables(); updateOrderTableSelect(); }
+  if(e.key === STORAGE.TABLES) { tables = load(STORAGE.TABLES, []); renderTables(); }
+  if(e.key === STORAGE.BAR_SALES) { barSales = load(STORAGE.BAR_SALES, []); renderBarSalesHistory(); renderTables(); }
+  if(e.key === STORAGE.STAFF) { staff = load(STORAGE.STAFF, []); }
+  if(e.key === STORAGE.BOOKINGS) { bookings = load(STORAGE.BOOKINGS, []); renderTables(); }
+  if(e.key === STORAGE.SHIFT) {
+    try { currentShift = JSON.parse(e.newValue); } catch(err) { currentShift = null; }
+    updateShiftDisplay();
+  }
+}
+
+// ============================================
+// ИНИЦИАЛИЗАЦИЯ
+// ============================================
+function updateTime() {
+  const now = new Date();
+  const el = document.getElementById('currentDateTime');
+  if(el) el.textContent = now.toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'short'})+' '+now.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+}
+
+function init() {
+  // Загружаем всё
+  tables = load(STORAGE.TABLES, []);
+  sessions = load(STORAGE.SESSIONS, []);
+  barItems = load(STORAGE.BAR_ITEMS, [
+    {id:'1',name:'Пиво светлое 0.5л',price:250,category:'drinks'},
+    {id:'2',name:'Вода 0.5л',price:100,category:'drinks'},
+    {id:'3',name:'Кола 0.5л',price:150,category:'drinks'},
+    {id:'4',name:'Чай',price:120,category:'drinks'},
+    {id:'5',name:'Сэндвич',price:200,category:'food'},
+    {id:'6',name:'Пицца (кусочек)',price:150,category:'food'},
+    {id:'7',name:'Чипсы',price:120,category:'snacks'},
+    {id:'8',name:'Орешки',price:150,category:'snacks'}
+  ]);
+  barSales = load(STORAGE.BAR_SALES, []);
+  settings = load(STORAGE.SETTINGS, { pricePerHour: 500, minTimeMinutes: 30, roundingMinutes: 15 });
+  staff = load(STORAGE.STAFF, []);
+  bookings = load(STORAGE.BOOKINGS, []);
+  
+  try {
+    const s = localStorage.getItem(STORAGE.SHIFT);
+    if(s) currentShift = JSON.parse(s);
+  } catch(e) {}
+  
+  // Слушатель синхронизации
+  window.addEventListener('storage', syncListener);
+  
+  // Запускаем
+  updateTime();
+  setInterval(updateTime, 1000);
+  updateShiftDisplay();
+  renderTables();
+  renderBarMenu();
+  renderBarSalesHistory();
+  updateOrderTableSelect();
+  
+  document.getElementById('orderDiscountInput')?.addEventListener('input', renderOrder);
+  
+  // Автообновление активных сессий
+  setInterval(() => {
+    const hasActive = sessions.some(s=>s.status==='active');
+    if(hasActive && !document.getElementById('tab-tables')?.classList.contains('hidden')) renderTables();
+  }, 10000);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+// ============================================
+// БРОНИРОВАНИЯ
+// ============================================
+function renderBookings(filter = 'pending') {
+    const tbody = document.getElementById('bookingsTableBody');
+    if(!tbody) return;
+    
+    let bookings = loadData('bc_bookings_v2', []);
+    tbody.innerHTML = '';
+    
+    // Фильтрация
+    let filtered = bookings;
+    if (filter === 'pending') filtered = bookings.filter(b => b.status === 'pending');
+    else if (filter === 'confirmed') filtered = bookings.filter(b => b.status === 'confirmed');
+    
+    // Сортировка по дате
+    filtered.sort((a, b) => new Date(a.date + 'T' + a.time) - new Date(b.date + 'T' + b.time));
+    
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">Нет заявок</td></tr>';
+        updateBookingStats();
+        return;
+    }
+    
+    filtered.forEach(booking => {
+        const row = document.createElement('tr');
+        row.className = 'border-t border-gray-800';
+        
+        const statusColors = {
+            pending: 'bg-yellow-900/50 text-yellow-400',
+            confirmed: 'bg-green-900/50 text-green-400',
+            cancelled: 'bg-red-900/50 text-red-400',
+            completed: 'bg-gray-700 text-gray-400'
+        };
+        
+        const statusLabels = {
+            pending: '⏳ Ожидает',
+            confirmed: '✅ Подтверждено',
+            cancelled: '❌ Отменено',
+            completed: '✓ Завершено'
+        };
+        
+        row.innerHTML = `
+            <td class="px-4 py-3 text-sm">${booking.date} <br> <span class="text-gray-400">${booking.time}</span></td>
+            <td class="px-4 py-3 font-bold">${booking.tableName}</td>
+            <td class="px-4 py-3">${booking.clientName}</td>
+            <td class="px-4 py-3 text-blue-400"><a href="tel:${booking.clientPhone}">${booking.clientPhone}</a></td>
+            <td class="px-4 py-3">${booking.isUnlimited ? '♾ Безлимит' : booking.duration + ' ч'}</td>
+            <td class="px-4 py-3 text-right">${booking.isUnlimited ? 'По факту' : formatCurrency(booking.estimatedPrice)}</td>
+            <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs ${statusColors[booking.status]}">${statusLabels[booking.status]}</span></td>
+            <td class="px-4 py-3 text-center">
+                ${booking.status === 'pending' ? `
+                    <button onclick="confirmBooking('${booking.id}')" class="px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded text-xs text-white mr-1">✓ Подтвердить</button>
+                    <button onclick="cancelBooking('${booking.id}')" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded text-xs text-white">✕ Отклонить</button>
+                ` : booking.status === 'confirmed' ? `
+                    <button onclick="startBookedSession('${booking.id}')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded text-xs text-white mr-1">▶ Начать</button>
+                    <button onclick="cancelBooking('${booking.id}')" class="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 rounded text-xs text-white">Отменить</button>
+                ` : '<span class="text-gray-500 text-xs">—</span>'}
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    updateBookingStats();
+}
+
+function updateBookingStats() {
+    const bookings = loadData('bc_bookings_v2', []);
+    const today = new Date().toISOString().split('T')[0];
+    
+    document.getElementById('bookingPendingCount').textContent = bookings.filter(b => b.status === 'pending').length;
+    document.getElementById('bookingConfirmedCount').textContent = bookings.filter(b => b.status === 'confirmed').length;
+    document.getElementById('bookingTodayCount').textContent = bookings.filter(b => b.date === today && b.status === 'confirmed').length;
+    
+    const revenue = bookings
+        .filter(b => b.status === 'confirmed' && !b.isUnlimited)
+        .reduce((sum, b) => sum + (b.estimatedPrice || 0), 0);
+    document.getElementById('bookingRevenueCount').textContent = formatCurrency(revenue);
+}
+
+function confirmBooking(bookingId) {
+    let bookings = loadData('bc_bookings_v2', []);
+    const idx = bookings.findIndex(b => b.id === bookingId);
+    if(idx !== -1) {
+        bookings[idx].status = 'confirmed';
+        bookings[idx].confirmedAt = new Date().toISOString();
+        saveData('bc_bookings_v2', bookings);
+        renderBookings();
+        showNotification(`✅ Бронь подтверждена`, 'success');
+        
+        // Уведомление о звонке клиенту
+        setTimeout(() => {
+            const b = bookings[idx];
+            alert(`📞 Позвоните клиенту:\n${b.clientName}\n${b.clientPhone}\nСтол: ${b.tableName}\nВремя: ${b.date} ${b.time}`);
+        }, 300);
+    }
+}
+
+function cancelBooking(bookingId) {
+    if(!confirm('Отклонить эту бронь?')) return;
+    
+    let bookings = loadData('bc_bookings_v2', []);
+    const idx = bookings.findIndex(b => b.id === bookingId);
+    if(idx !== -1) {
+        bookings[idx].status = 'cancelled';
+        saveData('bc_bookings_v2', bookings);
+        renderBookings();
+        showNotification('❌ Бронь отклонена', 'warning');
+    }
+}
+
+function startBookedSession(bookingId) {
+    let bookings = loadData('bc_bookings_v2', []);
+    const booking = bookings.find(b => b.id === bookingId);
+    if(!booking) return;
+    
+    // Проверка - не занята ли уже сессия
+    const activeSession = sessions.find(s => s.tableId === booking.tableId && s.status === 'active');
+    if(activeSession) {
+        showNotification('❌ На этом столе уже идёт сессия', 'error');
+        return;
+    }
+    
+    // Создание сессии
+    const session = {
+        id: generateId(),
+        tableId: booking.tableId,
+        tableName: booking.tableName,
+        clientName: booking.clientName,
+        operatorId: currentShiftState?.managerId || null,
+        operatorName: currentShiftState?.managerId ? (staff.find(s => s.id === currentShiftState.managerId)?.name) : null,
+        startTime: new Date().toISOString(),
+        endTime: null,
+        cost: 0,
+        status: 'active',
+        isFromBooking: true,
+        bookingId: bookingId,
+        isUnlimited: booking.isUnlimited
+    };
+    
+    sessions.push(session);
+    saveData(STORAGE_KEYS.SESSIONS, sessions);
+    
+    // Обновление брони
+    booking.status = 'completed';
+    booking.sessionId = session.id;
+    saveData('bc_bookings_v2', bookings);
+    
+    renderBookings();
+    renderTables();
+    showNotification(`🎱 Сессия начата: ${booking.tableName} - ${booking.clientName}`, 'success');
+}
+
+
+</script>
+</body>
+</html>
